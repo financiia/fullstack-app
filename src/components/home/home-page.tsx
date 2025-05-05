@@ -42,7 +42,7 @@ function FeaturesSection() {
               'flex flex-col items-start justify-center border-border border-2 rounded-lg p-8 shadow-2xl bg-white'
             }
           >
-            <ul className={'flex flex-col gap-4'}>
+            <ul className={'flex flex-col gap-3'}>
               {[
                 'Organização de transações direto pelo WhatsApp',
                 'Aceita áudios e imagens',
@@ -50,9 +50,11 @@ function FeaturesSection() {
                 'Gráficos e tendências de consumo',
                 'Dashboard completo pelo navegador e aplicativo',
               ].map((feature) => (
-                <li key={feature} className="flex gap-x-3">
-                  <CircleCheck className={'h-6 w-6 text-muted-foreground'} />
-                  <span className={'text-base'}>{feature}</span>
+                <li key={feature} className="flex gap-x-2 items-center">
+                  <div className="w-[24px]">
+                    <CircleCheck className={'text-muted-foreground'} size={24} />
+                  </div>
+                  <span className={'text-base text-md'}>{feature}</span>
                 </li>
               ))}
             </ul>

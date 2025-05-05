@@ -1,9 +1,9 @@
 import { createClient } from '@/utils/supabase/server';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import prisma from '@/lib/prisma';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const {
     data: { user },

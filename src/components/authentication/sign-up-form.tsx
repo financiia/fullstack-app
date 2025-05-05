@@ -26,7 +26,6 @@ export function SignupForm() {
   const enableVerify = onlyNumbers.length === 11;
 
   function handleSignup() {
-    console.log('handleSignup', onlyNumbers);
     setIsLoading(true);
     signup({ phone: onlyNumbers }).then((data) => {
       if (data?.error) {

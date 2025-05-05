@@ -15,7 +15,7 @@ export function PriceAmount({ loading, priceSuffix, tier }: Props) {
         <Skeleton className="h-[96px] w-full bg-border" />
       ) : (
         <>
-          <div className={cn('text-[80px] leading-[96px] tracking-[-1.6px] font-medium')}>{tier.price}</div>
+          <div className={cn('md:text-[80px] md:leading-[96px] tracking-[-1.6px] font-medium')}>{tier.price}</div>
           <div className={cn('font-medium leading-[12px] text-[12px]')}>{priceSuffix}</div>
         </>
       )}

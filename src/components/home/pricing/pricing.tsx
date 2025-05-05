@@ -4,6 +4,8 @@ import { cn } from '@/lib/utils';
 import { PriceTitle } from '@/components/home/pricing/price-title';
 import { Separator } from '@/components/ui/separator';
 import { FeaturedCardGradient } from '@/components/gradients/featured-card-gradient';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export function Pricing() {
   return (
@@ -23,18 +25,25 @@ export function Pricing() {
             <div className={cn('flex gap-5 flex-col rounded-lg rounded-b-none')}>
               {tier.featured && <FeaturedCardGradient />}
               <PriceTitle tier={tier} />
-              <div className="mt-6 flex flex-col px-8">
-                <div className={cn('text-[80px] leading-[96px] tracking-[-1.6px] font-medium')}>
+              <div className="md:mt-6 flex flex-col px-4 md:px-8">
+                <div className={cn('text-5xl md:text-[80px] md:leading-[96px] tracking-[-1.6px] font-medium')}>
                   R$ {tier.price.toFixed(2)}
                 </div>
               </div>
-              <div className={'px-8'}>
+              <div className={'px-4 md:px-8'}>
                 <Separator className={'bg-border'} />
               </div>
-              <div className={'px-8 text-[16px] leading-[24px]'}>{tier.description}</div>
+              <div className={'px-4 md:px-8 text-[16px] leading-[24px]'}>{tier.description}</div>
             </div>
-            <div className={'px-8 mt-8'}>
-              <StripeButton />
+            <div className={'px-4 md:px-8 mt-8'}>
+              <Link href={'/signup'}>
+                <Button variant={'default'} className="w-full">
+                  Contratar
+                </Button>
+              </Link>
+            </div>
+            <div className={'px-4 md:px-8 mt-4'}>
+              <Separator className={'bg-border'} />
             </div>
             <FeaturesList tier={tier} />
           </div>

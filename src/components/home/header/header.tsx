@@ -8,8 +8,8 @@ interface Props {
 
 export default function Header({ user }: Props) {
   return (
-    <nav id="header" className="bg-background/70 backdrop-blur-[6px] sticky top-0 z-50 border-b border-border">
-      <div className="mx-auto max-w-7xl relative px-[32px] py-[18px] flex items-center justify-between">
+    <nav id="header" className="bg-gray-200/70 backdrop-blur-[6px] sticky top-0 z-50 border-b border-border">
+      <div className="mx-auto max-w-7xl relative px-[32px] py-[5px] md:py-[18px] flex items-center justify-between">
         <div className="flex items-center space-x-8">
           <Link className="flex items-center" href={'/'}>
             {/* <Image className="w-auto block" src="/logo.png" width={131} height={28} alt="AeroEdit" /> */}

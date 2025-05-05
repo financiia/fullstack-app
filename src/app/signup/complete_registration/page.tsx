@@ -19,6 +19,12 @@ export default function CompleteRegistrationPage() {
     window.location.href = data.session.url;
   };
 
+  fetch('/api/stripe/invoices')
+    .then((res) => res.json())
+    .then((data) => {
+      console.log(data);
+    });
+
   return (
     <div>
       <form className="min-h-screen bg-background flex flex-col items-center justify-center not-md:justify-start not-md:pt-5 px-4">

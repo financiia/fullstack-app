@@ -10,7 +10,7 @@ export function PriceTitle({ tier }: Props) {
   const { name, featured, icon } = tier;
   return (
     <div
-      className={cn('flex justify-between items-center px-8 pt-8', {
+      className={cn('flex justify-between items-center px-4 md:px-8 pt-4 md:pt-8', {
         'featured-price-title': featured,
       })}
     >
