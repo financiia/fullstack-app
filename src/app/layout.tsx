@@ -8,10 +8,10 @@ import { Toaster } from '@/components/ui/toaster';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://paddle-billing.vercel.app'),
-  title: 'AeroEdit',
+  metadataBase: new URL('https://financiia.com'),
+  title: 'Financiia',
   description:
-    'AeroEdit is a powerful team design collaboration app and image editor. With plans for businesses of all sizes, streamline your workflow with real-time collaboration, advanced editing tools, and seamless project management.',
+    'Financiia é uma plataforma de gerenciamento financeiro que ajuda você a controlar suas finanças de forma fácil e eficiente.',
 };
 
 export default function RootLayout({

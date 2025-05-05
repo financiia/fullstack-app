@@ -7,14 +7,14 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npx prisma db pull && npx prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "prettier": "prettier --write --ignore-unknown .",
     "prettier:check": "prettier --check --ignore-unknown .",
     "lint-staged": "lint-staged",
-    "test": "pnpm lint && pnpm prettier:check"
+    "prisma:generate": "prisma db pull && prisma generate && next build"
   },
   "git": {
     "pre-commit": "lint-staged"
@@ -23,8 +23,12 @@
     "*": "prettier --write --ignore-unknown"
   },
   "dependencies": {
+    "@deepgram/sdk": "^3.12.1",
+    "@google/genai": "^0.12.0",
+    "@mercadopago/sdk-react": "^1.0.2",
     "@paddle/paddle-js": "^1.4.1",
     "@paddle/paddle-node-sdk": "^2.7.0",
+    "@prisma/client": "^6.7.0",
     "@radix-ui/react-accordion": "^1.2.8",
     "@radix-ui/react-dialog": "^1.1.11",
     "@radix-ui/react-dropdown-menu": "^2.1.12",
@@ -39,17 +43,27 @@
     "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
+    "highcharts": "^12.2.0",
+    "highcharts-react-official": "^3.2.2",
+    "lodash": "^4.17.21",
     "lodash.throttle": "^4.1.1",
     "lucide-react": "^0.503.0",
+    "mercadopago": "^2.5.0",
     "next": "15.3.1",
+    "openai": "^4.97.0",
+    "prisma": "^6.7.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-telefone-brasileiro": "^1.0.5",
+    "reactjs-otp-input": "^2.0.10",
     "tailwind-merge": "^3.2.0",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
+    "@flydotio/dockerfile": "^0.7.10",
     "@tailwindcss/postcss": "^4.1.4",
     "@types/lodash.throttle": "^4.1.9",
     "@types/node": "^22.15.3",
@@ -62,12 +76,8 @@
     "postcss": "^8.5.3",
     "prettier": "^3.5.3",
     "tailwindcss": "^4.1.4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.4",
     "typescript": "^5.8.3"
-  },
-  "pnpm": {
-    "overrides": {
-      "@types/react": "19.1.2",
-      "@types/react-dom": "19.1.2"
-    }
   }
 }

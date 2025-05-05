@@ -11,7 +11,7 @@ export default async function Layout({ children }: Props) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   if (!data.user) {
-    redirect('/login');
+    redirect('/signup');
   }
   return <DashboardLayout>{children}</DashboardLayout>;
 }

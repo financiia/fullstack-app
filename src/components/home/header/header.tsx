@@ -24,7 +24,7 @@ export default function Header({ user }: Props) {
               </Button>
             ) : (
               <Button asChild={true} variant={'secondary'}>
-                <Link href={'/login'}>Sign in</Link>
+                <Link href={'/signup'}>Entrar</Link>
               </Button>
             )}
           </div>

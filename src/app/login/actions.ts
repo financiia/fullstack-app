@@ -20,12 +20,12 @@ export async function login(data: FormData) {
   redirect('/');
 }
 
-export async function signInWithGithub() {
+export async function signInWithGoogle() {
   const supabase = await createClient();
   const { data } = await supabase.auth.signInWithOAuth({
-    provider: 'github',
+    provider: 'google',
     options: {
-      redirectTo: `https://paddle-billing.vercel.app/auth/callback`,
+      redirectTo: `http://localhost:3000/auth/callback`,
     },
   });
   if (data.url) {
@@ -41,6 +41,7 @@ export async function loginAnonymously() {
   });
 
   if (signInError || updateUserError) {
+    console.error(signInError, updateUserError);
     return { error: true };
   }
 

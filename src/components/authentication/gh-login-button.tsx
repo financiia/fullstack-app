@@ -2,7 +2,7 @@
 
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { signInWithGithub } from '@/app/login/actions';
+import { signInWithGoogle } from '@/app/login/actions';
 import Image from 'next/image';
 
 interface Props {
@@ -20,14 +20,14 @@ export function GhLoginButton({ label }: Props) {
         <div className={'text-border text-xs font-medium px-4'}>or</div>
         <Separator className={'w-5/12 bg-border'} />
       </div>
-      <Button onClick={() => signInWithGithub()} variant={'secondary'} className={'w-full'}>
+      <Button onClick={() => signInWithGoogle()} variant={'secondary'} className={'w-full'}>
         <Image
           height="24"
           className={'mr-3'}
           width="24"
-          src="https://cdn.simpleicons.org/github/878989"
+          src="https://cdn.simpleicons.org/google/878989"
           unoptimized={true}
-          alt={'GitHub logo'}
+          alt={'Google logo'}
         />
         {label}
       </Button>
