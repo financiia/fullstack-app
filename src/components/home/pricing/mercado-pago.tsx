@@ -18,7 +18,7 @@ export function MercadoPago({ tier }: { tier: Tier }) {
     // <Wallet initialization={{preferenceId: tier.priceId}} />
     <div>
       <a href={initPoint!} target="_blank" rel="noopener noreferrer">
-        <Button onClick={handleCreateSubscription}>Assinar</Button>
+        <Button onClick={handleCreateSubscription}>Começar teste grátis</Button>
       </a>
     </div>
   );

@@ -1,119 +1,64 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useUserInfo } from '@/hooks/useUserInfo';
 import '../../styles/home-page.css';
-import { LocalizationBanner } from '@/components/home/header/localization-banner';
 import Header from '@/components/home/header/header';
 import { HeroSection } from '@/components/home/hero-section/hero-section';
 import { Pricing } from '@/components/home/pricing/pricing';
-import { HomePageBackground } from '@/components/gradients/home-page-background';
 import { Footer } from '@/components/home/footer/footer';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/components/ui/use-toast';
-import { Button } from '@/components/ui/button';
-import { User } from '@supabase/supabase-js';
-import { Loader2 } from 'lucide-react';
+import { CircleCheck } from 'lucide-react';
 
 export function HomePage() {
   const supabase = createClient();
   const { user } = useUserInfo(supabase);
-  const [country, setCountry] = useState('US');
 
   return (
-    <>
-      {/* <LocalizationBanner country={country} onCountryChange={setCountry} /> */}
-      <div>
-        <UpdateUserPhoneModal user={user} />
-        <HomePageBackground />
-        <Header user={user} />
-        <HeroSection />
-        <Pricing country={country} />
-        <Footer />
-      </div>
-    </>
+    <div className="pb-10">
+      <Header user={user} />
+
+      <HeroSection />
+      <FeaturesSection />
+      <Pricing />
+      <Footer />
+    </div>
   );
 }
 
-function UpdateUserPhoneModal({ user }: { user: User | null }) {
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-  const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    console.log(user?.phone);
-    if (!user) return;
-    if (!user.phone) {
-      setIsPhoneModalOpen(true);
-    }
-  }, [user?.phone]);
-
-  const handleSavePhoneNumber = async () => {
-    setIsLoading(true);
-    // Here you would typically make an API call to save the phone number
-    // For now, we'll just simulate a successful save
-    await fetch('/api/update-user-phone', {
-      method: 'POST',
-      body: JSON.stringify({ phone: phoneNumber, user_id: user?.id }),
-    });
-
-    setIsPhoneModalOpen(false);
-    setIsSuccessModalOpen(true);
-    setIsLoading(false);
-  };
-
+function FeaturesSection() {
   return (
-    <>
-      <Dialog open={isPhoneModalOpen} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Enter Your Phone Number</DialogTitle>
-            <DialogDescription>Please enter your phone number to receive messages from our AI Bot.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Input
-                type="tel"
-                placeholder="+55 (DDD) 99999-9999"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-              />
-            </div>
+    <section
+      id="features"
+      className={'mx-auto max-w-7xl px-[32px] relative flex items-center justify-between mt-6 mb-12 bg-gray-300 p-10'}
+    >
+      <div className={'text-center w-full flex flex-col items-center justify-center'}>
+        <h1 className={'text-[40px] leading-[40px] md:text-[60px] md:leading-[60px] tracking-[-1.6px] font-medium'}>
+          Funcionalidades
+        </h1>
+        {/* Card grande com checkzinhos em várias funcionalidades */}
+        <div className={'w-full flex flex-row items-center justify-center gap-10 mt-5'}>
+          <div
+            className={
+              'flex flex-col items-start justify-center border-border border-2 rounded-lg p-8 shadow-2xl bg-white'
+            }
+          >
+            <ul className={'flex flex-col gap-4'}>
+              {[
+                'Organização de transações direto pelo WhatsApp',
+                'Aceita áudios e imagens',
+                'Relatórios completos de gastos',
+                'Gráficos e tendências de consumo',
+                'Dashboard completo pelo navegador e aplicativo',
+              ].map((feature) => (
+                <li key={feature} className="flex gap-x-3">
+                  <CircleCheck className={'h-6 w-6 text-muted-foreground'} />
+                  <span className={'text-base'}>{feature}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <DialogFooter>
-            <Button onClick={handleSavePhoneNumber} disabled={!phoneNumber || isLoading}>
-              {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Save Phone Number'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isSuccessModalOpen} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Success!</DialogTitle>
-            <DialogDescription>
-              Your phone number has been saved successfully.
-              <br />
-              The AI Bot has sent a message to your WhatsApp!
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => setIsSuccessModalOpen(false)}>Got it!</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+        </div>
+      </div>
+    </section>
   );
 }

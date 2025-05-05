@@ -2,8 +2,7 @@
 
 import { createClient } from '@/utils/supabase/client';
 // Simples NEXTjs page para verificar o link do magic link do Supabase e redirecionar para a home
-import { revalidatePath } from 'next/cache';
-import { redirect, useSearchParams, usePathname, useParams } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 export default function Verify() {
@@ -14,7 +13,6 @@ export default function Verify() {
     const supabase = createClient();
     const searchParams = new URLSearchParams(window.location.href.split('#')[1]);
     const token = searchParams.get('access_token');
-    console.log('token: ', token);
 
     if (token) {
       supabase.auth.setSession({

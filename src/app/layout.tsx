@@ -12,6 +12,20 @@ export const metadata: Metadata = {
   title: 'Financiia',
   description:
     'Financiia é uma plataforma de gerenciamento financeiro que ajuda você a controlar suas finanças de forma fácil e eficiente.',
+  icons: {
+    icon: [
+      {
+        media: '(prefers-color-scheme: light)',
+        url: '/logo-fundo-claro.png',
+        href: '/logo-fundo-claro.png',
+      },
+      {
+        media: '(prefers-color-scheme: dark)',
+        url: '/logo-fundo-escuro.png',
+        href: '/logo-fundo-escuro.png',
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -20,7 +34,7 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="en" className={'min-h-full dark'}>
+    <html lang="pt-BR" className={'min-h-full'}>
       <body className={inter.className}>
         {children}
         <Toaster />

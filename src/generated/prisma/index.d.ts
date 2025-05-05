@@ -20741,6 +20741,9 @@ export namespace Prisma {
     is_sso_user: boolean | null;
     deleted_at: Date | null;
     is_anonymous: boolean | null;
+    nickname: string | null;
+    whatsapp_phone: string | null;
+    stripe_customer_id: string | null;
   };
 
   export type UsersMaxAggregateOutputType = {
@@ -20777,6 +20780,9 @@ export namespace Prisma {
     is_sso_user: boolean | null;
     deleted_at: Date | null;
     is_anonymous: boolean | null;
+    nickname: string | null;
+    whatsapp_phone: string | null;
+    stripe_customer_id: string | null;
   };
 
   export type UsersCountAggregateOutputType = {
@@ -20815,6 +20821,9 @@ export namespace Prisma {
     is_sso_user: number;
     deleted_at: number;
     is_anonymous: number;
+    nickname: number;
+    whatsapp_phone: number;
+    stripe_customer_id: number;
     _all: number;
   };
 
@@ -20860,6 +20869,9 @@ export namespace Prisma {
     is_sso_user?: true;
     deleted_at?: true;
     is_anonymous?: true;
+    nickname?: true;
+    whatsapp_phone?: true;
+    stripe_customer_id?: true;
   };
 
   export type UsersMaxAggregateInputType = {
@@ -20896,6 +20908,9 @@ export namespace Prisma {
     is_sso_user?: true;
     deleted_at?: true;
     is_anonymous?: true;
+    nickname?: true;
+    whatsapp_phone?: true;
+    stripe_customer_id?: true;
   };
 
   export type UsersCountAggregateInputType = {
@@ -20934,6 +20949,9 @@ export namespace Prisma {
     is_sso_user?: true;
     deleted_at?: true;
     is_anonymous?: true;
+    nickname?: true;
+    whatsapp_phone?: true;
+    stripe_customer_id?: true;
     _all?: true;
   };
 
@@ -21056,6 +21074,9 @@ export namespace Prisma {
     is_sso_user: boolean;
     deleted_at: Date | null;
     is_anonymous: boolean;
+    nickname: string | null;
+    whatsapp_phone: string | null;
+    stripe_customer_id: string | null;
     _count: UsersCountAggregateOutputType | null;
     _avg: UsersAvgAggregateOutputType | null;
     _sum: UsersSumAggregateOutputType | null;
@@ -21112,6 +21133,9 @@ export namespace Prisma {
       is_sso_user?: boolean;
       deleted_at?: boolean;
       is_anonymous?: boolean;
+      nickname?: boolean;
+      whatsapp_phone?: boolean;
+      stripe_customer_id?: boolean;
       identities?: boolean | users$identitiesArgs<ExtArgs>;
       mfa_factors?: boolean | users$mfa_factorsArgs<ExtArgs>;
       one_time_tokens?: boolean | users$one_time_tokensArgs<ExtArgs>;
@@ -21160,6 +21184,9 @@ export namespace Prisma {
         is_sso_user?: boolean;
         deleted_at?: boolean;
         is_anonymous?: boolean;
+        nickname?: boolean;
+        whatsapp_phone?: boolean;
+        stripe_customer_id?: boolean;
       },
       ExtArgs['result']['users']
     >;
@@ -21202,6 +21229,9 @@ export namespace Prisma {
         is_sso_user?: boolean;
         deleted_at?: boolean;
         is_anonymous?: boolean;
+        nickname?: boolean;
+        whatsapp_phone?: boolean;
+        stripe_customer_id?: boolean;
       },
       ExtArgs['result']['users']
     >;
@@ -21242,6 +21272,9 @@ export namespace Prisma {
     is_sso_user?: boolean;
     deleted_at?: boolean;
     is_anonymous?: boolean;
+    nickname?: boolean;
+    whatsapp_phone?: boolean;
+    stripe_customer_id?: boolean;
   };
 
   export type usersOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<
@@ -21279,7 +21312,10 @@ export namespace Prisma {
     | 'reauthentication_sent_at'
     | 'is_sso_user'
     | 'deleted_at'
-    | 'is_anonymous',
+    | 'is_anonymous'
+    | 'nickname'
+    | 'whatsapp_phone'
+    | 'stripe_customer_id',
     ExtArgs['result']['users']
   >;
   export type usersInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -21339,6 +21375,9 @@ export namespace Prisma {
         is_sso_user: boolean;
         deleted_at: Date | null;
         is_anonymous: boolean;
+        nickname: string | null;
+        whatsapp_phone: string | null;
+        stripe_customer_id: string | null;
       },
       ExtArgs['result']['users']
     >;
@@ -21906,6 +21945,9 @@ export namespace Prisma {
     readonly is_sso_user: FieldRef<'users', 'Boolean'>;
     readonly deleted_at: FieldRef<'users', 'DateTime'>;
     readonly is_anonymous: FieldRef<'users', 'Boolean'>;
+    readonly nickname: FieldRef<'users', 'String'>;
+    readonly whatsapp_phone: FieldRef<'users', 'String'>;
+    readonly stripe_customer_id: FieldRef<'users', 'String'>;
   }
 
   // Custom InputTypes
@@ -23915,6 +23957,9 @@ export namespace Prisma {
     is_sso_user: 'is_sso_user';
     deleted_at: 'deleted_at';
     is_anonymous: 'is_anonymous';
+    nickname: 'nickname';
+    whatsapp_phone: 'whatsapp_phone';
+    stripe_customer_id: 'stripe_customer_id';
   };
 
   export type UsersScalarFieldEnum = (typeof UsersScalarFieldEnum)[keyof typeof UsersScalarFieldEnum];
@@ -25214,6 +25259,9 @@ export namespace Prisma {
     is_sso_user?: BoolFilter<'users'> | boolean;
     deleted_at?: DateTimeNullableFilter<'users'> | Date | string | null;
     is_anonymous?: BoolFilter<'users'> | boolean;
+    nickname?: StringNullableFilter<'users'> | string | null;
+    whatsapp_phone?: StringNullableFilter<'users'> | string | null;
+    stripe_customer_id?: StringNullableFilter<'users'> | string | null;
     identities?: IdentitiesListRelationFilter;
     mfa_factors?: Mfa_factorsListRelationFilter;
     one_time_tokens?: One_time_tokensListRelationFilter;
@@ -25257,6 +25305,9 @@ export namespace Prisma {
     is_sso_user?: SortOrder;
     deleted_at?: SortOrderInput | SortOrder;
     is_anonymous?: SortOrder;
+    nickname?: SortOrderInput | SortOrder;
+    whatsapp_phone?: SortOrderInput | SortOrder;
+    stripe_customer_id?: SortOrderInput | SortOrder;
     identities?: identitiesOrderByRelationAggregateInput;
     mfa_factors?: mfa_factorsOrderByRelationAggregateInput;
     one_time_tokens?: one_time_tokensOrderByRelationAggregateInput;
@@ -25304,6 +25355,9 @@ export namespace Prisma {
       is_sso_user?: BoolFilter<'users'> | boolean;
       deleted_at?: DateTimeNullableFilter<'users'> | Date | string | null;
       is_anonymous?: BoolFilter<'users'> | boolean;
+      nickname?: StringNullableFilter<'users'> | string | null;
+      whatsapp_phone?: StringNullableFilter<'users'> | string | null;
+      stripe_customer_id?: StringNullableFilter<'users'> | string | null;
       identities?: IdentitiesListRelationFilter;
       mfa_factors?: Mfa_factorsListRelationFilter;
       one_time_tokens?: One_time_tokensListRelationFilter;
@@ -25349,6 +25403,9 @@ export namespace Prisma {
     is_sso_user?: SortOrder;
     deleted_at?: SortOrderInput | SortOrder;
     is_anonymous?: SortOrder;
+    nickname?: SortOrderInput | SortOrder;
+    whatsapp_phone?: SortOrderInput | SortOrder;
+    stripe_customer_id?: SortOrderInput | SortOrder;
     _count?: usersCountOrderByAggregateInput;
     _avg?: usersAvgOrderByAggregateInput;
     _max?: usersMaxOrderByAggregateInput;
@@ -25395,6 +25452,9 @@ export namespace Prisma {
     is_sso_user?: BoolWithAggregatesFilter<'users'> | boolean;
     deleted_at?: DateTimeNullableWithAggregatesFilter<'users'> | Date | string | null;
     is_anonymous?: BoolWithAggregatesFilter<'users'> | boolean;
+    nickname?: StringNullableWithAggregatesFilter<'users'> | string | null;
+    whatsapp_phone?: StringNullableWithAggregatesFilter<'users'> | string | null;
+    stripe_customer_id?: StringNullableWithAggregatesFilter<'users'> | string | null;
   };
 
   export type transactionsWhereInput = {
@@ -26603,6 +26663,9 @@ export namespace Prisma {
     is_sso_user?: boolean;
     deleted_at?: Date | string | null;
     is_anonymous?: boolean;
+    nickname?: string | null;
+    whatsapp_phone?: string | null;
+    stripe_customer_id?: string | null;
     identities?: identitiesCreateNestedManyWithoutUsersInput;
     mfa_factors?: mfa_factorsCreateNestedManyWithoutUsersInput;
     one_time_tokens?: one_time_tokensCreateNestedManyWithoutUsersInput;
@@ -26646,6 +26709,9 @@ export namespace Prisma {
     is_sso_user?: boolean;
     deleted_at?: Date | string | null;
     is_anonymous?: boolean;
+    nickname?: string | null;
+    whatsapp_phone?: string | null;
+    stripe_customer_id?: string | null;
     identities?: identitiesUncheckedCreateNestedManyWithoutUsersInput;
     mfa_factors?: mfa_factorsUncheckedCreateNestedManyWithoutUsersInput;
     one_time_tokens?: one_time_tokensUncheckedCreateNestedManyWithoutUsersInput;
@@ -26689,6 +26755,9 @@ export namespace Prisma {
     is_sso_user?: BoolFieldUpdateOperationsInput | boolean;
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     is_anonymous?: BoolFieldUpdateOperationsInput | boolean;
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null;
+    whatsapp_phone?: NullableStringFieldUpdateOperationsInput | string | null;
+    stripe_customer_id?: NullableStringFieldUpdateOperationsInput | string | null;
     identities?: identitiesUpdateManyWithoutUsersNestedInput;
     mfa_factors?: mfa_factorsUpdateManyWithoutUsersNestedInput;
     one_time_tokens?: one_time_tokensUpdateManyWithoutUsersNestedInput;
@@ -26732,6 +26801,9 @@ export namespace Prisma {
     is_sso_user?: BoolFieldUpdateOperationsInput | boolean;
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     is_anonymous?: BoolFieldUpdateOperationsInput | boolean;
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null;
+    whatsapp_phone?: NullableStringFieldUpdateOperationsInput | string | null;
+    stripe_customer_id?: NullableStringFieldUpdateOperationsInput | string | null;
     identities?: identitiesUncheckedUpdateManyWithoutUsersNestedInput;
     mfa_factors?: mfa_factorsUncheckedUpdateManyWithoutUsersNestedInput;
     one_time_tokens?: one_time_tokensUncheckedUpdateManyWithoutUsersNestedInput;
@@ -26775,6 +26847,9 @@ export namespace Prisma {
     is_sso_user?: boolean;
     deleted_at?: Date | string | null;
     is_anonymous?: boolean;
+    nickname?: string | null;
+    whatsapp_phone?: string | null;
+    stripe_customer_id?: string | null;
   };
 
   export type usersUpdateManyMutationInput = {
@@ -26813,6 +26888,9 @@ export namespace Prisma {
     is_sso_user?: BoolFieldUpdateOperationsInput | boolean;
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     is_anonymous?: BoolFieldUpdateOperationsInput | boolean;
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null;
+    whatsapp_phone?: NullableStringFieldUpdateOperationsInput | string | null;
+    stripe_customer_id?: NullableStringFieldUpdateOperationsInput | string | null;
   };
 
   export type usersUncheckedUpdateManyInput = {
@@ -26851,6 +26929,9 @@ export namespace Prisma {
     is_sso_user?: BoolFieldUpdateOperationsInput | boolean;
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     is_anonymous?: BoolFieldUpdateOperationsInput | boolean;
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null;
+    whatsapp_phone?: NullableStringFieldUpdateOperationsInput | string | null;
+    stripe_customer_id?: NullableStringFieldUpdateOperationsInput | string | null;
   };
 
   export type transactionsCreateInput = {
@@ -28008,6 +28089,9 @@ export namespace Prisma {
     is_sso_user?: SortOrder;
     deleted_at?: SortOrder;
     is_anonymous?: SortOrder;
+    nickname?: SortOrder;
+    whatsapp_phone?: SortOrder;
+    stripe_customer_id?: SortOrder;
   };
 
   export type usersAvgOrderByAggregateInput = {
@@ -28048,6 +28132,9 @@ export namespace Prisma {
     is_sso_user?: SortOrder;
     deleted_at?: SortOrder;
     is_anonymous?: SortOrder;
+    nickname?: SortOrder;
+    whatsapp_phone?: SortOrder;
+    stripe_customer_id?: SortOrder;
   };
 
   export type usersMinOrderByAggregateInput = {
@@ -28084,6 +28171,9 @@ export namespace Prisma {
     is_sso_user?: SortOrder;
     deleted_at?: SortOrder;
     is_anonymous?: SortOrder;
+    nickname?: SortOrder;
+    whatsapp_phone?: SortOrder;
+    stripe_customer_id?: SortOrder;
   };
 
   export type usersSumOrderByAggregateInput = {
@@ -29812,6 +29902,9 @@ export namespace Prisma {
     is_sso_user?: boolean;
     deleted_at?: Date | string | null;
     is_anonymous?: boolean;
+    nickname?: string | null;
+    whatsapp_phone?: string | null;
+    stripe_customer_id?: string | null;
     mfa_factors?: mfa_factorsCreateNestedManyWithoutUsersInput;
     one_time_tokens?: one_time_tokensCreateNestedManyWithoutUsersInput;
     sessions?: sessionsCreateNestedManyWithoutUsersInput;
@@ -29854,6 +29947,9 @@ export namespace Prisma {
     is_sso_user?: boolean;
     deleted_at?: Date | string | null;
     is_anonymous?: boolean;
+    nickname?: string | null;
+    whatsapp_phone?: string | null;
+    stripe_customer_id?: string | null;
     mfa_factors?: mfa_factorsUncheckedCreateNestedManyWithoutUsersInput;
     one_time_tokens?: one_time_tokensUncheckedCreateNestedManyWithoutUsersInput;
     sessions?: sessionsUncheckedCreateNestedManyWithoutUsersInput;
@@ -29912,6 +30008,9 @@ export namespace Prisma {
     is_sso_user?: BoolFieldUpdateOperationsInput | boolean;
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     is_anonymous?: BoolFieldUpdateOperationsInput | boolean;
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null;
+    whatsapp_phone?: NullableStringFieldUpdateOperationsInput | string | null;
+    stripe_customer_id?: NullableStringFieldUpdateOperationsInput | string | null;
     mfa_factors?: mfa_factorsUpdateManyWithoutUsersNestedInput;
     one_time_tokens?: one_time_tokensUpdateManyWithoutUsersNestedInput;
     sessions?: sessionsUpdateManyWithoutUsersNestedInput;
@@ -29954,6 +30053,9 @@ export namespace Prisma {
     is_sso_user?: BoolFieldUpdateOperationsInput | boolean;
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     is_anonymous?: BoolFieldUpdateOperationsInput | boolean;
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null;
+    whatsapp_phone?: NullableStringFieldUpdateOperationsInput | string | null;
+    stripe_customer_id?: NullableStringFieldUpdateOperationsInput | string | null;
     mfa_factors?: mfa_factorsUncheckedUpdateManyWithoutUsersNestedInput;
     one_time_tokens?: one_time_tokensUncheckedUpdateManyWithoutUsersNestedInput;
     sessions?: sessionsUncheckedUpdateManyWithoutUsersNestedInput;
@@ -30176,6 +30278,9 @@ export namespace Prisma {
     is_sso_user?: boolean;
     deleted_at?: Date | string | null;
     is_anonymous?: boolean;
+    nickname?: string | null;
+    whatsapp_phone?: string | null;
+    stripe_customer_id?: string | null;
     identities?: identitiesCreateNestedManyWithoutUsersInput;
     one_time_tokens?: one_time_tokensCreateNestedManyWithoutUsersInput;
     sessions?: sessionsCreateNestedManyWithoutUsersInput;
@@ -30218,6 +30323,9 @@ export namespace Prisma {
     is_sso_user?: boolean;
     deleted_at?: Date | string | null;
     is_anonymous?: boolean;
+    nickname?: string | null;
+    whatsapp_phone?: string | null;
+    stripe_customer_id?: string | null;
     identities?: identitiesUncheckedCreateNestedManyWithoutUsersInput;
     one_time_tokens?: one_time_tokensUncheckedCreateNestedManyWithoutUsersInput;
     sessions?: sessionsUncheckedCreateNestedManyWithoutUsersInput;
@@ -30305,6 +30413,9 @@ export namespace Prisma {
     is_sso_user?: BoolFieldUpdateOperationsInput | boolean;
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     is_anonymous?: BoolFieldUpdateOperationsInput | boolean;
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null;
+    whatsapp_phone?: NullableStringFieldUpdateOperationsInput | string | null;
+    stripe_customer_id?: NullableStringFieldUpdateOperationsInput | string | null;
     identities?: identitiesUpdateManyWithoutUsersNestedInput;
     one_time_tokens?: one_time_tokensUpdateManyWithoutUsersNestedInput;
     sessions?: sessionsUpdateManyWithoutUsersNestedInput;
@@ -30347,6 +30458,9 @@ export namespace Prisma {
     is_sso_user?: BoolFieldUpdateOperationsInput | boolean;
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     is_anonymous?: BoolFieldUpdateOperationsInput | boolean;
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null;
+    whatsapp_phone?: NullableStringFieldUpdateOperationsInput | string | null;
+    stripe_customer_id?: NullableStringFieldUpdateOperationsInput | string | null;
     identities?: identitiesUncheckedUpdateManyWithoutUsersNestedInput;
     one_time_tokens?: one_time_tokensUncheckedUpdateManyWithoutUsersNestedInput;
     sessions?: sessionsUncheckedUpdateManyWithoutUsersNestedInput;
@@ -30389,6 +30503,9 @@ export namespace Prisma {
     is_sso_user?: boolean;
     deleted_at?: Date | string | null;
     is_anonymous?: boolean;
+    nickname?: string | null;
+    whatsapp_phone?: string | null;
+    stripe_customer_id?: string | null;
     identities?: identitiesCreateNestedManyWithoutUsersInput;
     mfa_factors?: mfa_factorsCreateNestedManyWithoutUsersInput;
     sessions?: sessionsCreateNestedManyWithoutUsersInput;
@@ -30431,6 +30548,9 @@ export namespace Prisma {
     is_sso_user?: boolean;
     deleted_at?: Date | string | null;
     is_anonymous?: boolean;
+    nickname?: string | null;
+    whatsapp_phone?: string | null;
+    stripe_customer_id?: string | null;
     identities?: identitiesUncheckedCreateNestedManyWithoutUsersInput;
     mfa_factors?: mfa_factorsUncheckedCreateNestedManyWithoutUsersInput;
     sessions?: sessionsUncheckedCreateNestedManyWithoutUsersInput;
@@ -30489,6 +30609,9 @@ export namespace Prisma {
     is_sso_user?: BoolFieldUpdateOperationsInput | boolean;
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     is_anonymous?: BoolFieldUpdateOperationsInput | boolean;
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null;
+    whatsapp_phone?: NullableStringFieldUpdateOperationsInput | string | null;
+    stripe_customer_id?: NullableStringFieldUpdateOperationsInput | string | null;
     identities?: identitiesUpdateManyWithoutUsersNestedInput;
     mfa_factors?: mfa_factorsUpdateManyWithoutUsersNestedInput;
     sessions?: sessionsUpdateManyWithoutUsersNestedInput;
@@ -30531,6 +30654,9 @@ export namespace Prisma {
     is_sso_user?: BoolFieldUpdateOperationsInput | boolean;
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     is_anonymous?: BoolFieldUpdateOperationsInput | boolean;
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null;
+    whatsapp_phone?: NullableStringFieldUpdateOperationsInput | string | null;
+    stripe_customer_id?: NullableStringFieldUpdateOperationsInput | string | null;
     identities?: identitiesUncheckedUpdateManyWithoutUsersNestedInput;
     mfa_factors?: mfa_factorsUncheckedUpdateManyWithoutUsersNestedInput;
     sessions?: sessionsUncheckedUpdateManyWithoutUsersNestedInput;
@@ -30897,6 +31023,9 @@ export namespace Prisma {
     is_sso_user?: boolean;
     deleted_at?: Date | string | null;
     is_anonymous?: boolean;
+    nickname?: string | null;
+    whatsapp_phone?: string | null;
+    stripe_customer_id?: string | null;
     identities?: identitiesCreateNestedManyWithoutUsersInput;
     mfa_factors?: mfa_factorsCreateNestedManyWithoutUsersInput;
     one_time_tokens?: one_time_tokensCreateNestedManyWithoutUsersInput;
@@ -30939,6 +31068,9 @@ export namespace Prisma {
     is_sso_user?: boolean;
     deleted_at?: Date | string | null;
     is_anonymous?: boolean;
+    nickname?: string | null;
+    whatsapp_phone?: string | null;
+    stripe_customer_id?: string | null;
     identities?: identitiesUncheckedCreateNestedManyWithoutUsersInput;
     mfa_factors?: mfa_factorsUncheckedCreateNestedManyWithoutUsersInput;
     one_time_tokens?: one_time_tokensUncheckedCreateNestedManyWithoutUsersInput;
@@ -31055,6 +31187,9 @@ export namespace Prisma {
     is_sso_user?: BoolFieldUpdateOperationsInput | boolean;
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     is_anonymous?: BoolFieldUpdateOperationsInput | boolean;
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null;
+    whatsapp_phone?: NullableStringFieldUpdateOperationsInput | string | null;
+    stripe_customer_id?: NullableStringFieldUpdateOperationsInput | string | null;
     identities?: identitiesUpdateManyWithoutUsersNestedInput;
     mfa_factors?: mfa_factorsUpdateManyWithoutUsersNestedInput;
     one_time_tokens?: one_time_tokensUpdateManyWithoutUsersNestedInput;
@@ -31097,6 +31232,9 @@ export namespace Prisma {
     is_sso_user?: BoolFieldUpdateOperationsInput | boolean;
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     is_anonymous?: BoolFieldUpdateOperationsInput | boolean;
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null;
+    whatsapp_phone?: NullableStringFieldUpdateOperationsInput | string | null;
+    stripe_customer_id?: NullableStringFieldUpdateOperationsInput | string | null;
     identities?: identitiesUncheckedUpdateManyWithoutUsersNestedInput;
     mfa_factors?: mfa_factorsUncheckedUpdateManyWithoutUsersNestedInput;
     one_time_tokens?: one_time_tokensUncheckedUpdateManyWithoutUsersNestedInput;
@@ -31690,6 +31828,9 @@ export namespace Prisma {
     is_sso_user?: boolean;
     deleted_at?: Date | string | null;
     is_anonymous?: boolean;
+    nickname?: string | null;
+    whatsapp_phone?: string | null;
+    stripe_customer_id?: string | null;
     identities?: identitiesCreateNestedManyWithoutUsersInput;
     mfa_factors?: mfa_factorsCreateNestedManyWithoutUsersInput;
     one_time_tokens?: one_time_tokensCreateNestedManyWithoutUsersInput;
@@ -31732,6 +31873,9 @@ export namespace Prisma {
     is_sso_user?: boolean;
     deleted_at?: Date | string | null;
     is_anonymous?: boolean;
+    nickname?: string | null;
+    whatsapp_phone?: string | null;
+    stripe_customer_id?: string | null;
     identities?: identitiesUncheckedCreateNestedManyWithoutUsersInput;
     mfa_factors?: mfa_factorsUncheckedCreateNestedManyWithoutUsersInput;
     one_time_tokens?: one_time_tokensUncheckedCreateNestedManyWithoutUsersInput;
@@ -31790,6 +31934,9 @@ export namespace Prisma {
     is_sso_user?: BoolFieldUpdateOperationsInput | boolean;
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     is_anonymous?: BoolFieldUpdateOperationsInput | boolean;
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null;
+    whatsapp_phone?: NullableStringFieldUpdateOperationsInput | string | null;
+    stripe_customer_id?: NullableStringFieldUpdateOperationsInput | string | null;
     identities?: identitiesUpdateManyWithoutUsersNestedInput;
     mfa_factors?: mfa_factorsUpdateManyWithoutUsersNestedInput;
     one_time_tokens?: one_time_tokensUpdateManyWithoutUsersNestedInput;
@@ -31832,6 +31979,9 @@ export namespace Prisma {
     is_sso_user?: BoolFieldUpdateOperationsInput | boolean;
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     is_anonymous?: BoolFieldUpdateOperationsInput | boolean;
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null;
+    whatsapp_phone?: NullableStringFieldUpdateOperationsInput | string | null;
+    stripe_customer_id?: NullableStringFieldUpdateOperationsInput | string | null;
     identities?: identitiesUncheckedUpdateManyWithoutUsersNestedInput;
     mfa_factors?: mfa_factorsUncheckedUpdateManyWithoutUsersNestedInput;
     one_time_tokens?: one_time_tokensUncheckedUpdateManyWithoutUsersNestedInput;

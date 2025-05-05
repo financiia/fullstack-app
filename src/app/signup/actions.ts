@@ -7,7 +7,6 @@ interface FormData {
 }
 
 export async function signup(data: FormData) {
-  console.log('Logging in with phone: ', data.phone);
   const response = await fetch('/api/generate-magic-link', {
     method: 'POST',
     body: JSON.stringify({ phone: data.phone }),
@@ -37,10 +36,12 @@ export async function verify(data: { phone: string; otp: string }) {
 
   // Manda pra o servidor verificar se é o primeiro registro do usuário. Se sim, manda uma mensagem de boas-vindas.
   if (!user?.phone_confirmed_at) {
-    fetch('/api/send-welcome-message', {
-      method: 'POST',
-      body: JSON.stringify({ userId: user?.id! }),
-    });
+    // await fetch('/api/send-welcome-message', {
+    //   method: 'POST',
+    //   body: JSON.stringify({ userId: user?.id! }),
+    // });
+
+    return { isFirstLogin: true };
   }
 
   if (error) {

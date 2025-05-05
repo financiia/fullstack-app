@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ status: 404, message: 'User not found' });
   }
   if (user?.phone_confirmed_at) {
-    return Response.json({ status: 400, message: 'User already confirmed phone' });
+    return Response.json({ status: 200, message: 'User already confirmed phone' });
   }
 
   await prisma.users.update({
@@ -43,5 +43,5 @@ Vamos começar?
 `.trim(),
   );
 
-  return Response.json({ status: 200, message: 'Welcome message sent' });
+  return Response.json({ status: 201, message: 'Welcome message sent' });
 }

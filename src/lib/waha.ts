@@ -17,7 +17,7 @@ export default class Waha {
       });
     }
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    await fetch(`${WAHA_BASE_URL}/sendTyping`, {
+    await fetch(`${WAHA_BASE_URL}/startTyping`, {
       headers: {
         'Content-Type': 'application/json',
         'X-API-KEY': `${WAHA_API_KEY}`,

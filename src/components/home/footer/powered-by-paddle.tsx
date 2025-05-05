@@ -14,7 +14,7 @@ export function PoweredByPaddle() {
       >
         <div className={'flex justify-center items-center gap-2'}>
           <span className={'text-sm leading-[14px]'}>A Next.js template by</span>
-          <Image src={'/assets/icons/logo/paddle-white-logo.svg'} alt={'Paddle logo'} width={54} height={14} />
+          <Image src={'/assets/icons/logo/paddle-white-logo.png'} alt={'Paddle logo'} width={54} height={14} />
         </div>
         <div className={'flex justify-center items-center gap-2 flex-wrap md:flex-nowrap'}>
           <Link className={'text-sm leading-[14px]'} href={'https://paddle.com'} target={'_blank'}>

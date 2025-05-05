@@ -11,7 +11,7 @@ export function CheckoutHeader() {
           <ChevronLeft />
         </Button>
       </Link>
-      <Image src={'/logo.svg'} alt={'AeroEdit'} width={131} height={28} />
+      <Image src={'/logo.png'} alt={'AeroEdit'} width={131} height={28} />
     </div>
   );
 }

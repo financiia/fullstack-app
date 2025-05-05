@@ -8,11 +8,11 @@ import { signup, verify } from '@/app/signup/actions';
 import { useToast } from '@/components/ui/use-toast';
 
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { redirect } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
 import { OtpInput } from 'reactjs-otp-input';
+import Link from 'next/link';
 
 export function SignupForm() {
   const { toast } = useToast();
@@ -26,6 +26,7 @@ export function SignupForm() {
   const enableVerify = onlyNumbers.length === 11;
 
   function handleSignup() {
+    console.log('handleSignup', onlyNumbers);
     setIsLoading(true);
     signup({ phone: onlyNumbers }).then((data) => {
       if (data?.error) {
@@ -44,80 +45,81 @@ export function SignupForm() {
         toast({ description: 'Something went wrong. Please try again', variant: 'destructive' });
         setError(data.error);
       } else {
-        toast({ description: 'Verificação realizada com sucesso!', variant: 'default' });
-        redirect('/dashboard');
+        if (data?.isFirstLogin) {
+          // toast({ description: 'Verificação realizada com sucesso!', variant: 'default' });
+          redirect('/signup/complete_registration');
+        } else {
+          toast({ description: 'Verificação realizada com sucesso!', variant: 'default' });
+          redirect('/dashboard');
+        }
       }
       setIsLoading(false);
     });
   }
 
   return (
-    <form action={'#'} className={'px-6 md:px-16 pb-6 py-8 gap-6 flex flex-col items-center justify-center'}>
-      <Image src={'/assets/icons/logo/aeroedit-icon.svg'} alt={'AeroEdit'} width={80} height={80} />
-      <div className={'text-[30px] leading-[36px] font-medium tracking-[-0.6px] text-center'}>
-        Entrar usando WhatsApp
-      </div>
-      <AuthenticationForm phone={phone} onPhoneChange={(phone) => setPhone(phone)} />
-      {showOTP && (
-        <div className="grid w-full max-w-sm items-center gap-1.5 mt-1">
-          <Label className={'text-muted-foreground leading-5 text-center'} htmlFor="phone">
-            Código de verificação
-          </Label>
-          <OtpInput
-            value={otp}
-            onChange={(e) => {
-              setOtp(e);
-              if (e.length === 6) {
-                handleVerify(e);
-              }
-            }}
-            numInputs={6}
-            separator={<span className="mx-1"></span>}
-            containerStyle="justify-center"
-            isInputNum={true}
-            inputStyle="border-border rounded-xs border-2 min-w-[25px] text-center"
-            hasErrored={error}
-            errorStyle="border-destructive"
-          />
-          {/* <Input
-            className={'border-border rounded-xs'}
-            type="phone"
-            id="phone"
-            autoComplete={'username'}
-            value={otp}
-            onChange={(e) => setOtp(e.target.value)}
-          /> */}
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+      <form className="w-full max-w-md flex flex-col items-center justify-center md:border-border md:border-2 md:rounded-xl p-4 md:shadow-2xl">
+        <Link href={'/'}>
+          <Image src={'/logo-fundo-claro.png'} alt={'AeroEdit'} width={60} height={60} className="mb-4" />
+        </Link>
+        <div className={'text-[30px] leading-[16px] font-medium tracking-[-0.6px] text-center mb-4 not-md:text-xl'}>
+          Entrar usando WhatsApp
         </div>
-      )}
-      {!showOTP ? (
-        <Button
-          formAction={() => handleSignup()}
-          type={'submit'}
-          variant={'default'}
-          className={'w-full'}
-          disabled={!enableVerify}
-        >
-          {isLoading ? (
-            <div className={'flex items-center justify-center'}>
-              <Loader2 className={'w-4 h-4 mr-2 animate-spin'} />
-              Enviando código...
-            </div>
-          ) : (
-            'Enviar código'
-          )}
-        </Button>
-      ) : (
-        <Button formAction={() => handleVerify()} type={'submit'} variant={'default'} className={'w-full'}>
-          {isLoading ? (
-            <div className={'flex items-center justify-center'}>
-              <Loader2 className={'w-4 h-4 mr-2 animate-spin'} />
-              Verificando...
-            </div>
-          ) : (
-            'Entrar'
-          )}
-        </Button>
-      )}
-    </form>
+        <AuthenticationForm phone={phone} onPhoneChange={(phone) => setPhone(phone)} />
+        {showOTP && (
+          <div className="grid w-full max-w-sm items-center gap-1.5 mt-1 mb-4">
+            <Label className={'text-muted-foreground leading-5 text-center text-md mt-1'} htmlFor="phone">
+              Código de verificação
+            </Label>
+            <OtpInput
+              value={otp}
+              onChange={(e) => {
+                setOtp(e);
+                if (e.length === 6) {
+                  handleVerify(e);
+                }
+              }}
+              numInputs={6}
+              separator={<span className="mx-1"></span>}
+              containerStyle="justify-center"
+              isInputNum={true}
+              inputStyle="border-border rounded-xs border-2 min-w-[30px] text-center py-1"
+              hasErrored={error}
+              errorStyle="border-destructive"
+            />
+          </div>
+        )}
+        {!showOTP ? (
+          <Button
+            formAction={() => handleSignup()}
+            type={'submit'}
+            variant={'default'}
+            className={'mt-4 w-full'}
+            disabled={!enableVerify}
+          >
+            {isLoading ? (
+              <div className={'flex items-center justify-center'}>
+                <Loader2 className={'w-4 h-4 mr-2 animate-spin'} />
+                Enviando código...
+              </div>
+            ) : (
+              'Enviar código'
+            )}
+          </Button>
+        ) : (
+          <Button formAction={() => handleVerify()} type={'submit'} variant={'default'} className={'w-full'}>
+            {isLoading ? (
+              <div className={'flex items-center justify-center'}>
+                <Loader2 className={'w-4 h-4 mr-2 animate-spin'} />
+                Verificando...
+              </div>
+            ) : (
+              'Entrar'
+            )}
+          </Button>
+        )}
+      </form>
+    </div>
   );
 }

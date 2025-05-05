@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { createClient, User } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import Waha from '@/lib/waha';
 import prisma from '@/lib/prisma';
 
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     await prisma.users.update({
       where: { id: userID },
-      data: { phone: whatsappPhone },
+      data: { phone: whatsappPhone, whatsapp_phone: whatsappPhone },
     });
   }
 

@@ -2,11 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { SubscriptionCards } from '@/components/dashboard/subscriptions/components/subscription-cards';
-import { getSubscriptions } from '@/utils/paddle/get-subscriptions';
 import { ErrorContent } from '@/components/dashboard/layout/error-content';
 
 export async function DashboardSubscriptionCardGroup() {
-  const subscriptions = await getSubscriptions();
+  const { subscriptions } = await fetch('/api/stripe/invoices').then((res) => res.json());
   return (
     <Card className={'bg-background/50 backdrop-blur-[24px] border-border p-6'}>
       <CardHeader className="p-0 space-y-0">

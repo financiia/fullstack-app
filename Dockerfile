@@ -49,6 +49,8 @@ RUN apt-get update -qq && \
 # Copy built application
 COPY --from=build /app /app
 
+RUN chmod +x /app/docker-entrypoint.js
+
 # Entrypoint prepares the database.
 ENTRYPOINT [ "/app/docker-entrypoint.js" ]
 

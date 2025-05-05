@@ -5,31 +5,33 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: hsl(0 0% 100%);
-  --foreground: hsl(240 5% 96%);
-  --card: hsl(0 0% 100%);
-  --card-foreground: hsl(222.2 84% 4.9%);
-  --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(222.2 84% 4.9%);
-  --primary: hsl(222.2 47.4% 11.2%);
-  --primary-foreground: hsl(240 5% 96%);
-  --secondary: hsl(210 40% 96.1%);
-  --secondary-foreground: hsl(222.2 47.4% 11.2%);
-  --muted: hsl(210 40% 96.1%);
-  --muted-foreground: hsl(215.4 16.3% 46.9%);
-  --accent: hsl(210 40% 96.1%);
-  --accent-foreground: hsl(222.2 47.4% 11.2%);
-  --destructive: hsl(0 84.2% 60.2%);
-  --destructive-foreground: hsl(210 40% 98%);
-  --border: hsl(194 9% 28%);
-  --input: hsl(214.3 31.8% 91.4%);
-  --ring: hsl(222.2 84% 4.9%);
+  --background: #fafafa;
+  --foreground: hsl(220 15% 10%);
+  --card: #fafafa;
+  --card-foreground: hsl(220 15% 10%);
+  --popover: #fafafa;
+  --popover-foreground: hsl(220 15% 10%);
+  --primary: hsl(222 47% 30%);
+  --primary-foreground: #fafafa;
+  --secondary: hsl(210 40% 95%);
+  --secondary-foreground: hsl(220 15% 20%);
+  --muted: hsl(210 40% 97%);
+  --muted-foreground: hsl(215 14% 50%);
+  --accent: hsl(210 60% 95%);
+  --accent-foreground: hsl(220 20% 25%);
+  --destructive: hsl(0 75% 55%);
+  --destructive-foreground: #fafafa;
+  --border: hsl(210 20% 90%);
+  --input: hsl(210 20% 90%);
+  --ring: hsl(222 50% 40%);
   --radius: 16px;
-  --chart-1: hsl(12 76% 61%);
-  --chart-2: hsl(173 58% 39%);
-  --chart-3: hsl(197 37% 24%);
-  --chart-4: hsl(43 74% 66%);
-  --chart-5: hsl(27 87% 67%);
+
+  /* Cores para gráficos com contraste melhorado */
+  --chart-1: hsl(10 80% 60%);
+  --chart-2: hsl(160 60% 40%);
+  --chart-3: hsl(200 45% 35%);
+  --chart-4: hsl(40 80% 60%);
+  --chart-5: hsl(25 85% 60%);
 }
 
 .dark {

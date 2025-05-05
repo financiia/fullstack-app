@@ -299,6 +299,9 @@ exports.Prisma.UsersScalarFieldEnum = {
   is_sso_user: 'is_sso_user',
   deleted_at: 'deleted_at',
   is_anonymous: 'is_anonymous',
+  nickname: 'nickname',
+  whatsapp_phone: 'whatsapp_phone',
+  stripe_customer_id: 'stripe_customer_id',
 };
 
 exports.Prisma.TransactionsScalarFieldEnum = {
