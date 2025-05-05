@@ -7,22 +7,17 @@ import { cn } from '@/lib/utils';
 
 const sidebarItems = [
   {
-    title: 'Dashboard',
+    title: 'Painel',
     icon: <Home className="h-6 w-6" />,
     href: '/dashboard',
   },
   {
-    title: 'Subscriptions',
-    icon: <Album className="h-6 w-6" />,
-    href: '/dashboard/subscriptions',
-  },
-  {
-    title: 'Payments',
+    title: 'Faturamento',
     icon: <CreditCard className="h-6 w-6" />,
-    href: '/dashboard/payments',
+    href: '/dashboard/billing',
   },
   {
-    title: 'History',
+    title: 'Histórico',
     icon: <History className="h-6 w-6" />,
     href: '/dashboard/history',
   },

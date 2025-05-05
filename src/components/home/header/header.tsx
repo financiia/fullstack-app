@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { User } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
-
+import Image from 'next/image';
 interface Props {
   user: User | null;
 }
@@ -10,7 +10,7 @@ export default function Header({ user }: Props) {
   return (
     <nav id="header" className="bg-gray-200/70 backdrop-blur-[6px] sticky top-0 z-50 border-b border-border">
       <div className="mx-auto max-w-7xl relative px-[32px] py-[5px] md:py-[18px] flex items-center justify-between">
-        <div className="flex items-center space-x-8">
+        <div className="flex items-center space-x-8 not-md:hidden">
           <Link className="flex items-center" href={'/'}>
             {/* <Image className="w-auto block" src="/logo.png" width={131} height={28} alt="AeroEdit" /> */}
           </Link>
@@ -46,6 +46,10 @@ export default function Header({ user }: Props) {
               FAQ
             </Link>
           </div>
+        </div>
+        <div className="flex items-center space-x-4 md:hidden">
+          <Image src="/logo-fundo-claro.png" alt="Financi.IA" width={30} height={30} className="ml-0 mr-1" />
+          <span className="text-lg font-bold text-primary">Financi.IA</span>
         </div>
         <div className="flex items-center space-x-4">
           {user?.id ? (

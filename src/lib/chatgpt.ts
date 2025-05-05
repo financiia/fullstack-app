@@ -1,3 +1,5 @@
+import OpenAI from 'openai';
+
 const GEMINI_API_KEY = 'AIzaSyDYapw143aCD_Lq8a0FWwjlJS7f_nArEYQ';
 const SYSTEM_PROMPT = `
 Você é um assistente financeiro que recebe mensagens do usuário (geralmente por WhatsApp) contendo informações sobre transações financeiras, como despesas, receitas ou lembretes de contas. Seu trabalho é entender a mensagem, identificar os dados relevantes e retornar um JSON com os campos apropriados.
@@ -6,6 +8,12 @@ Siga estas regras:
 - Sempre responda somente com um JSON.
 - Nunca explique, não adicione texto além do JSON.
 - Se a mensagem for irrelevante ou não contiver dados financeiros, retorne: { "tipo": "ignorado" }
+- Se a mensagem entrar como irrelevante, você ainda pode chamar as funções disponíveis, caso o usuário tenha solicitado:
+  - explain_usage
+  - get_last_transactions
+  - monthly_spending_summary
+  - 30_days_spending_summary
+  - cancel_subscription
 - A hora atual é: ${new Date().toISOString()}. Se não houver informação de data, use a data atual como hora da transação.
 
 Campos do JSON:
@@ -48,7 +56,51 @@ Resposta:
   "beautify": "Receita registrada! Confira os detalhes:\n\nValor: *R$ 300,00*\nCategoria: *Venda*\nData: 02/05/2025 12:00\nDescrição: Venda de trufa"
 }
 `;
-import OpenAI from 'openai';
+const TOOLS: OpenAI.Chat.ChatCompletionCreateParams['tools'] = [
+  {
+    type: 'function',
+    function: {
+      name: 'explain_usage',
+      description: 'Explica o uso do sistema',
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_last_transactions',
+      description: 'Retorna as últimas transações do usuário',
+      parameters: { type: 'object', properties: { limit_days: { type: 'number' } } },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'monthly_spending_summary',
+      description: 'Retorna um resumo do gasto do mês corrente',
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: '30_days_spending_summary',
+      description: 'Retorna um resumo do gasto dos últimos 30 dias',
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'cancel_subscription',
+      description: 'Cancela a assinatura do usuário',
+    },
+  },
+  // {
+  //   type: 'function',
+  //   function: {
+  //     name: 'register_user',
+  //     description: 'Registra o usuário no sistema e manda um link de pagamento com 30 dias de teste'
+  //   },
+  // }, // TODO: criar outro prompt para usuário não registrado
+];
 
 const openai = new OpenAI({
   apiKey: GEMINI_API_KEY,

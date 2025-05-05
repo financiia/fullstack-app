@@ -8,11 +8,11 @@ interface Props {
 export function DashboardPageHeader({ pageTitle }: Props) {
   return (
     <div>
-      <div className={'flex items-center gap-6'}>
+      <div className={'flex items-center gap-3 md:gap-6'}>
         <MobileSidebar />
         <h1 className="text-lg font-semibold md:text-4xl">{pageTitle}</h1>
       </div>
-      <Separator className={'relative bg-border my-8 dashboard-header-highlight'} />
+      <Separator className={'relative bg-border my-2 md:my-8 dashboard-header-highlight'} />
     </div>
   );
 }

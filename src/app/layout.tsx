@@ -34,7 +34,7 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={'min-h-full'}>
+    <html lang="pt-BR" className={'min-h-full bg-[#afafaf]'}>
       <body className={inter.className}>
         {children}
         <Toaster />

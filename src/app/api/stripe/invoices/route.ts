@@ -1,7 +1,7 @@
-import { createClient } from '@/utils/supabase/server';
 import { NextResponse, NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import prisma from '@/lib/prisma';
+import { createClient } from '@/utils/supabase/server-internal';
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     data: { user },
     error,
   } = await supabase.auth.getUser();
+  console.log(user);
   if (error) {
     return Response.json({ error: error.message }, { status: 401 });
   }
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
   const subscriptions = await stripe.subscriptions.list({
     customer: stripe_customer_id,
   });
+  console.log(subscriptions);
 
   return NextResponse.json({ invoices, subscriptions }, { status: 200 });
 }

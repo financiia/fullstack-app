@@ -382,7 +382,7 @@ const config = {
       value: 'prisma-client-js',
     },
     output: {
-      value: '/home/eduardo.rodrigues/Área de Trabalho/Funceme/personal/financiia/fullstack-app/src/generated/prisma',
+      value: 'C:\\Users\\eduar\\Desktop\\Financiia\\fullstack-app\\src\\generated\\prisma',
       fromEnvVar: null,
     },
     config: {
@@ -391,13 +391,12 @@ const config = {
     binaryTargets: [
       {
         fromEnvVar: null,
-        value: 'debian-openssl-3.0.x',
+        value: 'windows',
         native: true,
       },
     ],
     previewFeatures: ['multiSchema'],
-    sourceFilePath:
-      '/home/eduardo.rodrigues/Área de Trabalho/Funceme/personal/financiia/fullstack-app/prisma/schema.prisma',
+    sourceFilePath: 'C:\\Users\\eduar\\Desktop\\Financiia\\fullstack-app\\prisma\\schema.prisma',
     isCustomOutput: true,
   },
   relativeEnvPaths: {
