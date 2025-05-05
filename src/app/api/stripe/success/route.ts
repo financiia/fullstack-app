@@ -49,6 +49,7 @@ Vamos começar?
     where: { id: user?.id },
     data: {
       phone_confirmed_at: new Date(),
+      stripe_customer_id: session.customer as string,
     },
   });
 
