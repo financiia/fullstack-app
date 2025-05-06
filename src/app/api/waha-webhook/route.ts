@@ -248,8 +248,13 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
     //   return Response.json({ status: 200, message: 'Handled' });
     // }
 
+    let assistantMessage = null;
+    if (replyTo?.id) {
+      const message = await this.waha.getMessage(replyTo.id);
+      assistantMessage = message.body;
+    }
     // Process message with ChatGPT
-    const functionCalled = await this.chatgpt.getResponseREST(processedMessage);
+    const functionCalled = await this.chatgpt.getResponseREST(processedMessage, assistantMessage);
 
     await this.handleFunctionCall(functionCalled);
   }
@@ -263,6 +268,28 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
           this.payload.from,
           '*CANCELAMENTO DE ASSINATURA*\n\nVocê tem certeza que deseja cancelar o seu plano?\n\nSe sim, responda essa mensagem com "cancelar"',
         );
+      case 'cancel_subscription_confirmation':
+        // Get stripe customer
+        const stripeCustomer = await this.stripe.customers.retrieve(this.user!.stripe_customer_id as string);
+        // Get active subscription
+        const subscriptions = await this.stripe.subscriptions.list({
+          customer: stripeCustomer.id,
+        });
+        // @ts-ignore
+        const activeSubscription = subscriptions.data.find((subscription) => subscription.plan.active);
+        if (!activeSubscription) {
+          // await this.stripe.subscriptions.cancel(this.user!.stripe_subscription_id);
+          return this.waha.sendMessageWithTyping(
+            this.payload.id,
+            this.payload.from,
+            'Você não possui uma assinatura ativa. Entre em contato com o suporte.',
+          );
+        }
+
+        // Cancel subscription
+        await this.stripe.subscriptions.cancel(activeSubscription.id);
+
+        return this.waha.sendMessageWithTyping(this.payload.id, this.payload.from, 'Assinatura cancelada com sucesso!');
       case 'register_transaction':
         const transaction = JSON.parse(functionCalled.arguments);
 
@@ -282,6 +309,34 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
             whatsapp_message_id: messageId,
           },
         });
+        return;
+      case 'update_transaction':
+        const transactionUpdate = JSON.parse(functionCalled.arguments);
+        const currentTransaction = await prisma.transactions.findFirst({
+          where: {
+            user_id: this.user!.id,
+            whatsapp_message_id: this.payload.replyTo.id,
+          },
+        });
+
+        if (!currentTransaction) {
+          await this.waha.sendMessageWithTyping(
+            this.payload.id,
+            this.payload.from,
+            'Não foi possível encontrar a transação que você quer atualizar. Entre em contato com o suporte.',
+          );
+          return;
+        }
+
+        await prisma.transactions.update({
+          where: { id: currentTransaction!.id },
+          data: transactionUpdate,
+        });
+
+        await this.waha.sendMessageWithTyping(this.payload.id, this.payload.from, 'Transação atualizada com sucesso!');
+        return;
+      case 'cancel_transaction':
+        await this.handleCancellation(this.payload.id, this.payload.from, this.user!.id, this.payload.replyTo);
         return;
       case 'no_action':
         return this.waha.sendMessageWithTyping(

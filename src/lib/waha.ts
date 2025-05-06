@@ -102,4 +102,12 @@ export default class Waha {
     });
     return response.json();
   }
+
+  async getMessage(messageId: string) {
+    const response = await fetch(`${WAHA_BASE_URL}/messages?messageId=${messageId}&session=Financiia`, {
+      headers: { 'X-API-KEY': `${WAHA_API_KEY}` },
+      method: 'GET',
+    });
+    return response.json();
+  }
 }

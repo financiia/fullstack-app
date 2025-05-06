@@ -150,6 +150,39 @@ const TOOLS: OpenAI.Chat.ChatCompletionCreateParams['tools'] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'update_transaction',
+      description: 'Atualiza uma transação existente',
+      parameters: {
+        type: 'object',
+        properties: {
+          tipo: { type: 'string', description: 'Tipo da transação: "despesa" ou "receita"' },
+          valor: { type: 'number', description: 'Valor da transação' },
+          categoria: { type: 'string', description: 'Categoria da transação' },
+          data: { type: 'string', description: 'Data da transação no formato ISOSTRING' },
+          descricao: { type: 'string', description: 'Descrição da transação' },
+          recorrente: { type: 'boolean', description: 'Se a transação é recorrente' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'cancel_subscription_confirmation',
+      description: 'Confirma a decisão de cancelar a assinatura do usuário',
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'cancel_transaction',
+      description: 'Cancela uma transação existente',
+    },
+  },
+
   // {
   //   type: 'function',
   //   function: {
@@ -189,7 +222,7 @@ export default class ChatGPT {
     return 'Teve resposta';
   }
 
-  async getResponseREST(message: string) {
+  async getResponseREST(message: string, assistantMessage?: string) {
     const response = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
       method: 'POST',
       headers: {
@@ -200,6 +233,7 @@ export default class ChatGPT {
         model: 'gemini-2.0-flash',
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'assistant', content: assistantMessage },
           { role: 'user', content: message },
         ],
         tools: TOOLS,
