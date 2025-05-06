@@ -29,10 +29,14 @@ export async function verify(data: { phone: string; otp: string }) {
     data: { user },
     error,
   } = await supabase.auth.verifyOtp({
-    email: data.phone + '@supabase.io',
+    email: '55' + data.phone + '@supabase.io',
     token: data.otp,
     type: 'email',
   });
+
+  if (error) {
+    return { error: true };
+  }
 
   // Manda pra o servidor verificar se é o primeiro registro do usuário. Se sim, manda uma mensagem de boas-vindas.
   if (!user?.phone_confirmed_at) {
@@ -42,10 +46,6 @@ export async function verify(data: { phone: string; otp: string }) {
     // });
 
     return { isFirstLogin: true };
-  }
-
-  if (error) {
-    return { error: true };
   }
 
   if (user) {

@@ -5,16 +5,13 @@ const SYSTEM_PROMPT = `
 Você é um assistente financeiro que recebe mensagens do usuário (geralmente por WhatsApp) contendo informações sobre transações financeiras, como despesas, receitas ou lembretes de contas. Seu trabalho é entender a mensagem, identificar os dados relevantes e retornar um JSON com os campos apropriados.
 
 Siga estas regras:
-- Sempre responda somente com um JSON.
-- Nunca explique, não adicione texto além do JSON.
-- Se a mensagem for irrelevante ou não contiver dados financeiros, retorne: { "tipo": "ignorado" }
-- Se a mensagem entrar como irrelevante, você ainda pode chamar as funções disponíveis, caso o usuário tenha solicitado:
+- A função principal a ser chamada é a register_transaction. Caso a mensagem não seja uma transação, chame uma das funções disponíveis:
   - explain_usage
   - get_last_transactions
   - monthly_spending_summary
   - 30_days_spending_summary
   - cancel_subscription
-- A hora atual é: ${new Date().toISOString()}. Se não houver informação de data, use a data atual como hora da transação.
+  - no_action
 
 Campos do JSON:
 - tipo: "despesa", "receita", "lembrete" ou "ignorado"
@@ -29,7 +26,6 @@ Campos do JSON:
 - data: se houver uma data mencionada, SEMPRE NO FORMATO ISOSTRING; caso contrário, use a data de hoje
 - descricao: texto resumido da transação
 - recorrente: true se for algo que se repete mensalmente (ex: aluguel), false caso contrário
-- beautify: uma mensagem bonita para o usuário descrevendo a transação. a data sempre será em GMT-3 aqui.
 
 Exemplos:
 Usuário: "paguei o aluguel hoje, 1500 reais"
@@ -41,7 +37,6 @@ Resposta:
   "data": "2025-05-02T18:00:00.000Z",
   "descricao": "aluguel",
   "recorrente": true,
-  "beautify": "Despesa registrada! Confira os detalhes:\n\nValor: *R$ 1500,00*\nCategoria: *Moradia*\nData: 02/05/2025 15:00\nDescrição: Aluguel"
 }
 
 Usuário: "ganhei 300 reais vendendo trufa"
@@ -53,10 +48,28 @@ Resposta:
   "data": "2025-05-02T15:00:00.000Z",
   "descricao": "venda de trufa",
   "recorrente": false,
-  "beautify": "Receita registrada! Confira os detalhes:\n\nValor: *R$ 300,00*\nCategoria: *Venda*\nData: 02/05/2025 12:00\nDescrição: Venda de trufa"
 }
+
+*A hora atual é: ${new Date().toISOString()}. Se não houver informação de data, use a data atual como hora da transação*
 `;
 const TOOLS: OpenAI.Chat.ChatCompletionCreateParams['tools'] = [
+  {
+    type: 'function',
+    function: {
+      name: 'no_action',
+      description: 'Não faz nada',
+      parameters: {
+        type: 'object',
+        properties: {
+          message: {
+            type: 'string',
+            description:
+              'Resposta educada para o usuário indicando que não foi possível identificar uma ação a ser tomada',
+          },
+        },
+      },
+    },
+  },
   {
     type: 'function',
     function: {
@@ -69,7 +82,19 @@ const TOOLS: OpenAI.Chat.ChatCompletionCreateParams['tools'] = [
     function: {
       name: 'get_last_transactions',
       description: 'Retorna as últimas transações do usuário',
-      parameters: { type: 'object', properties: { limit_days: { type: 'number' } } },
+      parameters: {
+        type: 'object',
+        properties: {
+          limit_days: {
+            type: 'number',
+            description: 'Número de dias para retornar as transações. Se não for informado, retorna as últimas 5 dias',
+          },
+          limit_transactions: {
+            type: 'number',
+            description: 'Número de transações para retornar. Se não for informado, retorna as últimas 5 transações',
+          },
+        },
+      },
     },
   },
   {
@@ -82,7 +107,7 @@ const TOOLS: OpenAI.Chat.ChatCompletionCreateParams['tools'] = [
   {
     type: 'function',
     function: {
-      name: '30_days_spending_summary',
+      name: 'spending_summary_30_days',
       description: 'Retorna um resumo do gasto dos últimos 30 dias',
     },
   },
@@ -91,6 +116,38 @@ const TOOLS: OpenAI.Chat.ChatCompletionCreateParams['tools'] = [
     function: {
       name: 'cancel_subscription',
       description: 'Cancela a assinatura do usuário',
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'register_transaction',
+      description: 'Registra uma transação do usuário',
+      parameters: {
+        type: 'object',
+        properties: {
+          tipo: { type: 'string', description: 'Tipo da transação: "despesa" ou "receita"' },
+          valor: { type: 'number', description: 'Valor da transação' },
+          categoria: { type: 'string', description: 'Categoria da transação' },
+          data: { type: 'string', description: 'Data da transação no formato ISOSTRING' },
+          descricao: { type: 'string', description: 'Descrição da transação' },
+          recorrente: { type: 'boolean', description: 'Se a transação é recorrente' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'define_monthly_goal',
+      description: 'Define a meta mensal do usuário para uma categoria OU global',
+      parameters: {
+        type: 'object',
+        properties: {
+          tipo: { type: 'string', description: 'Categoria da meta OU "global"' },
+          valor: { type: 'number', description: 'Valor da meta' },
+        },
+      },
     },
   },
   // {
@@ -105,6 +162,7 @@ const TOOLS: OpenAI.Chat.ChatCompletionCreateParams['tools'] = [
 const openai = new OpenAI({
   apiKey: GEMINI_API_KEY,
   baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+  dangerouslyAllowBrowser: true,
 });
 
 export default class ChatGPT {
@@ -121,6 +179,7 @@ export default class ChatGPT {
             content: message,
           },
         ],
+        tools: TOOLS,
       })
       .catch((e) => {
         console.error(e);
@@ -143,14 +202,12 @@ export default class ChatGPT {
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: message },
         ],
-        response_format: { type: 'json_object' },
+        tools: TOOLS,
+        tool_choice: 'required',
       }),
     });
     const data = await response.json();
-    const dataJSON = JSON.parse(data.choices[0].message.content);
-    if (dataJSON.tipo !== 'ignorado') {
-      dataJSON.data = new Date(dataJSON.data).toISOString();
-    }
-    return dataJSON;
+    const functionCalled = data.choices[0].message.tool_calls[0].function;
+    return functionCalled;
   }
 }

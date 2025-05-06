@@ -3,18 +3,29 @@ import Waha from '@/lib/waha';
 import ChatGPT from '@/lib/chatgpt';
 import prisma from '@/lib/prisma';
 import { createClient } from '@deepgram/sdk';
-import { groupBy, sumBy } from 'lodash';
+import { capitalize, groupBy, sumBy } from 'lodash';
+import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
 
 /**
  * Handles incoming WhatsApp webhook requests
  */
-class WhatsAppWebhookHandler {
+export class WhatsAppWebhookHandler {
   private waha: Waha;
   private chatgpt: ChatGPT;
+  private supabase: SupabaseClient;
+  private stripe: Stripe;
+  private user: Awaited<ReturnType<typeof prisma.users.findUnique>> | undefined;
+  private payload: any;
 
   constructor() {
     this.waha = new Waha();
     this.chatgpt = new ChatGPT();
+    this.supabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!, // Never expose this to the client!
+    );
+    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
   }
 
   /**
@@ -39,15 +50,40 @@ class WhatsAppWebhookHandler {
   /**
    * Handles message from unregistered user
    */
-  private async handleUnregisteredUser(messageId: string, from: string) {
-    const message = `
-Crie uma conta no site https://fullstack-next.fly.dev/
+  async handleUnregisteredUser(messageId: string | null, from: string) {
+    // Cria o usuário
+    const {
+      data: { user },
+    } = await this.supabase.auth.admin.createUser({
+      email: from.split('@')[0] + '@supabase.io',
+      email_confirm: true,
+    });
 
-Lá você poderá registrar o seu número de telefone e começar a usar o bot!
-    
+    const contactInfo = await this.waha.getContactInfo(from);
+    if (!contactInfo) {
+      throw new Error('Failed to get contact info');
+    }
+
+    await prisma.users.update({
+      where: { id: user?.id },
+      data: { phone: from, whatsapp_phone: from, nickname: contactInfo.pushname, phone_confirmed_at: new Date() },
+    });
+
+    const session = await this.createStripeLink(user?.id as string);
+    if (!session) {
+      throw new Error('Failed to create stripe link');
+    }
+
+    const message = `
+*Bem-vindo à Financi.IA!*
+
+Eu sou a *Marill.IA*, sua assistente financeira. Já criei uma conta no nosso sistema para o seu telefone.
+
+Para começar a usar a plataforma, você pode iniciar seu teste grátis de 30 dias pelo link: ${session.url}
+
 Espero poder te ajudar no futuro!
     `.trim();
-    await this.waha.sendMessageWithTyping(messageId, from, message);
+    await this.waha.sendMessageWithTyping(null, from, message);
   }
 
   /**
@@ -87,9 +123,20 @@ Espero poder te ajudar no futuro!
   /**
    * Handles transaction history request
    */
-  private async handleHistory(messageId: string, from: string, userId: string) {
+  private async handleHistory(
+    messageId: string,
+    from: string,
+    userId: string,
+    limit_days?: number,
+    limit_transactions?: number,
+  ) {
     const transactions = await prisma.transactions.findMany({
-      where: { user_id: userId },
+      where: {
+        user_id: userId,
+        data: { gte: limit_days ? new Date(new Date().getTime() - limit_days * 24 * 60 * 60 * 1000) : undefined },
+      },
+      orderBy: { data: 'desc' },
+      take: (limit_transactions ?? limit_days) ? 30 : 5,
     });
 
     const message = `
@@ -114,19 +161,23 @@ ${transactions
   /**
    * Handles transaction summary request
    */
-  private async handleSummary(messageId: string, from: string, userId: string) {
+  private async handleSummary(messageId: string, from: string, userId: string, last_30_days: boolean) {
+    const firstDayOfMonth = new Date();
+    firstDayOfMonth.setDate(1);
+
     const transactions = await prisma.transactions.findMany({
-      where: { user_id: userId },
+      where: {
+        user_id: userId,
+        data: { gte: last_30_days ? new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000) : firstDayOfMonth },
+      },
     });
 
-    const last30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const transactionsLast30Days = transactions.filter((transaction) => new Date(transaction.data) >= last30Days);
-    const groupedByCategory = groupBy(transactionsLast30Days, 'categoria');
+    const groupedByCategory = groupBy(transactions, 'categoria');
     const sortedCategories = Object.entries(groupedByCategory)
       .map(([category, groupTransactions]) => ({
         category,
-        total: sumBy(groupTransactions, 'valor'),
-        porcentagem: (sumBy(groupTransactions, 'valor') / sumBy(transactions, 'valor')) * 100,
+        total: sumBy(groupTransactions, (t) => +t.valor),
+        porcentagem: (sumBy(groupTransactions, (t) => +t.valor) / sumBy(transactions, (t) => +t.valor)) * 100,
         quantidade: groupTransactions.length,
       }))
       .sort((a, b) => b.total - a.total);
@@ -134,7 +185,7 @@ ${transactions
     const message = `
 *Resumo de transações dos últimos 30 dias:*
 
-${sortedCategories.map((category) => `*${category.category}* - R$ ${category.total} - ${category.porcentagem.toFixed(0)}% - ${category.quantidade} transações`).join('\n')}
+${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${category.total} - ${category.porcentagem.toFixed(0)}% - ${category.quantidade} transações`).join('\n')}
     `.trim();
 
     await this.waha.sendMessageWithTyping(messageId, from, message);
@@ -148,6 +199,7 @@ ${sortedCategories.map((category) => `*${category.category}* - R$ ${category.tot
     const {
       payload: { id, body: message, from, fromMe, hasMedia, media, replyTo },
     } = requestBody;
+    this.payload = requestBody.payload;
 
     // Ignore messages from self or specific number
     if (fromMe || from === '5512981638494@c.us') {
@@ -158,6 +210,7 @@ ${sortedCategories.map((category) => `*${category.category}* - R$ ${category.tot
     const user = await prisma.users.findFirst({
       where: { phone: from },
     });
+    this.user = user;
 
     if (!user) {
       await this.handleUnregisteredUser(id, from);
@@ -185,42 +238,160 @@ ${sortedCategories.map((category) => `*${category.category}* - R$ ${category.tot
       return Response.json({ status: 200, message: 'Webhook received' });
     }
 
-    if (processedMessage === '\\historico') {
-      await this.handleHistory(id, from, user.id);
-      return Response.json({ status: 200, message: 'Handled' });
-    }
+    // if (processedMessage === '\\historico') {
+    //   await this.handleHistory(id, from, user.id);
+    //   return Response.json({ status: 200, message: 'Handled' });
+    // }
 
-    if (processedMessage === 'resumo') {
-      await this.handleSummary(id, from, user.id);
-      return Response.json({ status: 200, message: 'Handled' });
-    }
+    // if (processedMessage === 'resumo') {
+    //   await this.handleSummary(id, from, user.id);
+    //   return Response.json({ status: 200, message: 'Handled' });
+    // }
 
     // Process message with ChatGPT
-    const response = await this.chatgpt.getResponseREST(processedMessage);
-    if (response.tipo === 'ignorado') {
-      await this.waha.sendReactionJoinha(id, from);
-      return Response.json({ status: 200, message: 'Ignorado' });
+    const functionCalled = await this.chatgpt.getResponseREST(processedMessage);
+
+    await this.handleFunctionCall(functionCalled);
+  }
+
+  async handleFunctionCall(functionCalled: { name: string; arguments: string }) {
+    switch (functionCalled.name) {
+      case 'cancel_subscription':
+        // return this.waha.sendMessageWithButtons(null, '5521936181803@c.us', [{ type: 'reply', text: 'Cancelar Plano' }], 'Você tem certeza que deseja cancelar o seu plano?', 'Se sim, clique no botão abaixo', 'A ação poderá ser desfeita até o dia 30/05');
+        return this.waha.sendMessageWithTyping(
+          this.payload.id,
+          this.payload.from,
+          '*CANCELAMENTO DE ASSINATURA*\n\nVocê tem certeza que deseja cancelar o seu plano?\n\nSe sim, responda essa mensagem com "cancelar"',
+        );
+      case 'register_transaction':
+        const transaction = JSON.parse(functionCalled.arguments);
+
+        // Save transaction and send response
+        const messageId = await this.waha.sendMessageWithTyping(
+          this.payload.id,
+          this.payload.from,
+          this.beautifyTransaction(transaction),
+        );
+        await prisma.transactions.create({
+          data: {
+            user_id: this.user!.id,
+            categoria: transaction.categoria,
+            valor: transaction.valor,
+            data: transaction.data,
+            descricao: transaction.descricao,
+            whatsapp_message_id: messageId,
+          },
+        });
+        return;
+      case 'no_action':
+        return this.waha.sendMessageWithTyping(
+          this.payload.id,
+          this.payload.from,
+          JSON.parse(functionCalled.arguments).message,
+        );
+      case 'explain_usage':
+        return this.waha.sendMessageWithTyping(this.payload.id, this.payload.from, this._explainUsageMessage());
+      case 'get_last_transactions':
+        const { limit_days, limit_transactions } = JSON.parse(functionCalled.arguments);
+        return this.handleHistory(this.payload.id, this.payload.from, this.user!.id, limit_days, limit_transactions);
+      case 'monthly_spending_summary':
+        return this.handleSummary(this.payload.id, this.payload.from, this.user!.id, false);
+      case 'spending_summary_30_days':
+        return this.handleSummary(this.payload.id, this.payload.from, this.user!.id, true);
+      case 'define_monthly_goal':
+        const { tipo, valor } = JSON.parse(functionCalled.arguments);
+        return this.waha.sendMessageWithTyping(
+          this.payload.id,
+          this.payload.from,
+          this._defineMonthlyGoalMessage(tipo, valor),
+        );
+      default:
+        return 'Function not found';
     }
+  }
 
-    // Save transaction and send response
-    const messageId = await this.waha.sendMessageWithTyping(id, from, response.beautify.trim());
-    await prisma.transactions.create({
-      data: {
-        user_id: user.id,
-        categoria: response.categoria,
-        valor: response.valor,
-        data: response.data,
-        descricao: response.descricao,
-        whatsapp_message_id: messageId,
+  beautifyTransaction(transaction: {
+    tipo: string;
+    valor: number;
+    categoria: string;
+    data: string;
+    descricao: string;
+    recorrente: boolean;
+  }) {
+    return `
+Despesa registrada! Confira os detalhes:
+
+Valor: *R$ ${transaction.valor.toFixed(2)}*
+Categoria: *${capitalize(transaction.categoria)}*
+Data: ${new Date(transaction.data).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })}
+Descrição: ${capitalize(transaction.descricao)}
+    `.trim();
+  }
+
+  _explainUsageMessage() {
+    return `
+O bot é uma ferramenta para ajudar você a gerenciar suas finanças.
+
+Você pode registrar despesas e receitas, consultar seu saldo, e muito mais!
+
+Para registrar uma despesa, basta descrever a transação em uma mensagem simples ou em áudio.
+
+Você pode, ainda, me perguntar sobre suas últimas transações, resumo do gasto do mês e definição de metas mensais.
+    `.trim();
+  }
+
+  _defineMonthlyGoalMessage(tipo: string, valor: number) {
+    return `
+Meta mensal definida!
+
+Agora sua meta mensal é de *R$ ${valor.toFixed(2)}* para a categoria *${capitalize(tipo)}*.
+    `.trim();
+  }
+
+  async showErrorMessage() {
+    return this.waha.sendMessageWithTyping(
+      this.payload.id,
+      this.payload.from,
+      'Ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.',
+    );
+  }
+
+  async createStripeLink(userId: string) {
+    return await this.stripe.checkout.sessions.create({
+      client_reference_id: userId,
+      billing_address_collection: 'auto',
+      line_items: [
+        {
+          price: 'price_1RLQMPPGjwv1HAuwRuvVQK6t',
+          // For metered billing, do not pass quantity
+          quantity: 1,
+        },
+      ],
+      subscription_data: {
+        trial_period_days: 30,
+        trial_settings: {
+          end_behavior: {
+            missing_payment_method: 'cancel',
+          },
+        },
       },
+      mode: 'subscription',
+      success_url: `${process.env.NEXT_PUBLIC_URL}/api/stripe/success?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_URL}/api/stripe/cancel?canceled=true`,
+      locale: 'pt-BR',
     });
-
-    return Response.json({ status: 200, message: 'Webhook received' });
   }
 }
 
 // Export POST handler
 export async function POST(request: NextRequest) {
   const handler = new WhatsAppWebhookHandler();
-  return handler.handleRequest(request);
+  try {
+    await handler.handleRequest(request);
+  } catch (e) {
+    console.error(e);
+    await handler.showErrorMessage();
+  }
+
+  return Response.json({ status: 200, message: 'Webhook received' });
 }

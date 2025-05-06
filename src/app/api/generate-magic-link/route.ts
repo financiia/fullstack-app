@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const {
       data: { user },
     } = await supabase.auth.admin.createUser({
-      email: phone + '@supabase.io',
+      email: '55' + phone + '@supabase.io',
       email_confirm: true,
     });
     userID = user?.id;
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabase.auth.admin.generateLink({
     type: 'magiclink',
-    email: phone + '@supabase.io',
+    email: '55' + phone + '@supabase.io',
     options: {
       redirectTo: 'http://localhost:3000/signup/verify', // optional
     },

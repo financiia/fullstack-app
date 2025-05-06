@@ -69,4 +69,37 @@ export default class Waha {
       body: JSON.stringify({ reaction: '👍', session: 'Financiia', messageId: previousMessage }),
     }).then(console.log);
   }
+
+  async sendMessageWithButtons(
+    previousMessage: string | null,
+    phone: string,
+    buttons: { type: string; text: string }[],
+    header?: string,
+    body?: string,
+    footer?: string,
+  ) {
+    await fetch(`${WAHA_BASE_URL}/sendButtons`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': `${WAHA_API_KEY}`,
+      },
+      method: 'POST',
+      body: JSON.stringify({
+        header: header,
+        body: body,
+        footer: footer,
+        session: 'Financiia',
+        chatId: phone,
+        buttons: buttons,
+      }),
+    });
+  }
+
+  async getContactInfo(phone: string) {
+    const response = await fetch(`${WAHA_BASE_URL}/contacts?contactId=${phone}&session=Financiia`, {
+      headers: { 'X-API-KEY': `${WAHA_API_KEY}` },
+      method: 'GET',
+    });
+    return response.json();
+  }
 }

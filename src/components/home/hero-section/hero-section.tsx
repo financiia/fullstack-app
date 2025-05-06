@@ -16,35 +16,35 @@ export function HeroSection() {
 
         <div className={'w-full mt-5'}>
           <div className={'flex-row items-center justify-center gap-10 md:flex hidden'}>
-            <div className={'align-middle rounded-2xl overflow-hidden border-border border-2 shadow-2xl'}>
+            <div className={'align-middle rounded-2xl overflow-hidden'}>
               <Image
                 className="w-auto block"
-                src={'/assets/marillia/transacoes.jpeg'}
+                src={'/assets/marillia/transacoes.jpg'}
                 alt={'Marillia'}
-                width={200}
-                height={200}
+                width={250}
+                height={250}
               />
             </div>
             <div className={'align-middle rounded-2xl overflow-hidden'}>
               <Image
                 className="w-auto block"
-                src={'/assets/marillia/transacoes.jpeg'}
+                src={'/assets/marillia/transacoes.jpg'}
                 alt={'Marillia'}
-                width={200}
-                height={200}
+                width={250}
+                height={250}
               />
             </div>
           </div>
 
           <div className="flex md:hidden overflow-x-auto snap-x snap-mandatory">
             <div className="flex-shrink-0 w-full snap-center flex justify-center">
-              <div className={'align-middle rounded-2xl overflow-hidden border-border border-2 shadow-2xl'}>
+              <div className={'align-middle rounded-2xl overflow-hidden'}>
                 <Image
                   className="w-auto block"
-                  src={'/assets/marillia/transacoes.jpeg'}
+                  src={'/assets/marillia/transacoes.jpg'}
                   alt={'Marillia'}
-                  width={160}
-                  height={160}
+                  width={200}
+                  height={200}
                 />
               </div>
             </div>
@@ -52,10 +52,10 @@ export function HeroSection() {
               <div className={'align-middle rounded-2xl overflow-hidden'}>
                 <Image
                   className="w-auto block"
-                  src={'/assets/marillia/transacoes.jpeg'}
+                  src={'/assets/marillia/transacoes.jpg'}
                   alt={'Marillia'}
-                  width={160}
-                  height={160}
+                  width={200}
+                  height={200}
                 />
               </div>
             </div>

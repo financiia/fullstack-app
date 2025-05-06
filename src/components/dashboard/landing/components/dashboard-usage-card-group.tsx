@@ -1,6 +1,6 @@
 'use server';
 
-import { ArrowDown, Bolt, Image, Shapes, Timer } from 'lucide-react';
+import { ArrowDown, Bolt, Shapes } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { createClient } from '@/utils/supabase/server';
 import { sum } from 'lodash';
@@ -9,7 +9,10 @@ import Charts from './charts';
 export async function DashboardUsageCardGroup() {
   // Use o supabase para pegar os dados das transações
   const supabase = await createClient();
-  const { data: transactions, error } = await supabase.from('transactions').select('*');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: transactions } = await supabase.from('transactions').select('*').eq('user_id', user?.id);
   // console.log(transactions);
 
   const cards = [
