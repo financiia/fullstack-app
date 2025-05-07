@@ -3,7 +3,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
-      metas: {
+      goals: {
         Row: {
           categoria: string;
           created_at: string;
@@ -79,33 +79,30 @@ export type Database = {
           created_at: string;
           data: string;
           descricao: string;
-          id: number;
+          id: string;
           recurrent_transaction_id: number | null;
           user_id: string;
           valor: number;
-          whatsapp_message_id: string;
         };
         Insert: {
           categoria: string;
           created_at?: string;
           data: string;
           descricao: string;
-          id?: number;
+          id?: string;
           recurrent_transaction_id?: number | null;
           user_id: string;
           valor: number;
-          whatsapp_message_id: string;
         };
         Update: {
           categoria?: string;
           created_at?: string;
           data?: string;
           descricao?: string;
-          id?: number;
+          id?: string;
           recurrent_transaction_id?: number | null;
           user_id?: string;
           valor?: number;
-          whatsapp_message_id?: string;
         };
         Relationships: [
           {

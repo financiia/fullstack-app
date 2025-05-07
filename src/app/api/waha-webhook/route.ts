@@ -9,6 +9,7 @@ import { createClient as createSupabaseClient } from '@/utils/supabase/server-in
 import UnregisteredAgent from '@/lib/ai/unregistered';
 import BaseAgent from '@/lib/ai/base';
 import { createCheckoutSession } from '@/utils/stripe/server';
+import { TransactionsHandler } from '@/lib/ai/transactions';
 /**
  * Handles incoming WhatsApp webhook requests
  */
@@ -279,6 +280,7 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
     let messageHistory: (typeof this.payload)[] = await this.waha.getMessages(from);
     messageHistory.sort((a, b) => a.timestamp - b.timestamp);
     messageHistory = messageHistory.slice(-10);
+    messageHistory[messageHistory.length - 1].body = processedMessage; // Caso seja áudio.
 
     const messageHistoryGPT = messageHistory.map((message: typeof this.payload) => {
       // let messageOutput = `${message.id.split('_')[2]}: ${message.body}`;
@@ -293,8 +295,8 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
       return output;
     });
 
-    const baseAgent = new BaseAgent(messageHistoryGPT as any);
-    let { functionCalled, outputMessage } = await baseAgent.getResponse(processedMessage);
+    const baseAgent = new BaseAgent(messageHistoryGPT);
+    let { functionCalled, outputMessage } = await baseAgent.getResponse();
     if (outputMessage) {
       console.log('OUTPUT MESSAGE: ', outputMessage);
       const isMessageWithId = outputMessage.split(': ').length > 1;
@@ -304,12 +306,21 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
       await this.waha.sendMessageWithTyping(id, from, outputMessage);
     }
     if (functionCalled) {
-      console.log('FUNCTION CALLED: ', functionCalled);
-      await this.waha.sendMessageWithTyping(
-        id,
-        from,
-        `*Function called:* ${functionCalled.name}\n\nArgumentos: ${functionCalled.arguments}`,
-      );
+      if (functionCalled.handler === 'transactions') {
+        const transactionsHandler = new TransactionsHandler(
+          this.payload,
+          this.user!,
+          this.supabase,
+          this.stripe,
+          this.waha,
+        );
+        await transactionsHandler.handleFunctionCall(functionCalled);
+      }
+      // await this.waha.sendMessageWithTyping(
+      //   id,
+      //   from,
+      //   `*Function called:* ${functionCalled.name}\n\nArgumentos: ${functionCalled.arguments}`,
+      // );
       // await this.handleFunctionCall(functionCalled);
     }
     // Process message with ChatGPT

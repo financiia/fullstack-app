@@ -105,7 +105,7 @@ export default class UnregisteredAgent {
     this.messageHistory = messageHistory;
   }
 
-  async getResponse(message: string) {
+  async getResponse() {
     const messages = [{ role: 'system', content: SYSTEM_PROMPT }, ...this.messageHistory];
 
     const response = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
@@ -125,14 +125,17 @@ export default class UnregisteredAgent {
     const functionCalled = data.choices[0].message.tool_calls?.[0]?.function;
     // const outputMessage = data.choices[0].message.content;
 
-    if (functionCalled?.name === 'delegate_message') {
-      if (JSON.parse(functionCalled.arguments).agent === 'transaction_agent') {
+    if (!functionCalled || functionCalled.name !== 'delegate_message') {
+      throw new Error('No function called');
+    }
+
+    switch (JSON.parse(functionCalled.arguments).agent) {
+      case 'transaction_agent':
         console.log('DELEGATING TO TRANSACTION AGENT');
         const transactionAgent = new TransactionsAgent(this.messageHistory);
         return transactionAgent.getResponse();
-      }
+      default:
+        throw new Error('Invalid agent');
     }
-
-    // return { functionCalled, outputMessage };
   }
 }
