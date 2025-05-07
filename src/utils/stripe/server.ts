@@ -80,8 +80,8 @@ export async function createCheckoutSession(priceId = 'price_1RLQMPPGjwv1HAuwRuv
       },
     },
     mode: 'subscription',
-    success_url: `${process.env.NEXT_PUBLIC_URL}/api/stripe/success?success=true&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.NEXT_PUBLIC_URL}/api/stripe/cancel?canceled=true`,
+    // success_url: `${process.env.NEXT_PUBLIC_URL}/api/stripe/success?success=true&session_id={CHECKOUT_SESSION_ID}`,
+    // cancel_url: `${process.env.NEXT_PUBLIC_URL}/api/stripe/cancel?canceled=true`,
     locale: 'pt-BR',
   });
   return session;

@@ -1,4 +1,5 @@
-const WAHA_BASE_URL = 'https://waha.acan.credit/api';
+// const WAHA_BASE_URL = 'https://waha.acan.credit/api';
+const WAHA_BASE_URL = 'http://localhost:3001/api';
 const WAHA_API_KEY = '5BP#r*WSR77blS';
 
 export default class Waha {
@@ -45,7 +46,7 @@ export default class Waha {
       body: JSON.stringify({ chatId: phone, session: 'Financiia' }),
     });
 
-    return response.json().then((res) => res.key.id);
+    return response.json().then((res) => res.key?.id);
   }
 
   async sendReactionJoinha(previousMessage: string, phone: string) {
@@ -97,6 +98,14 @@ export default class Waha {
 
   async getContactInfo(phone: string) {
     const response = await fetch(`${WAHA_BASE_URL}/contacts?contactId=${phone}&session=Financiia`, {
+      headers: { 'X-API-KEY': `${WAHA_API_KEY}` },
+      method: 'GET',
+    });
+    return response.json();
+  }
+
+  async getMessages(phone: string) {
+    const response = await fetch(`${WAHA_BASE_URL}/Financiia/chats/${phone}/messages`, {
       headers: { 'X-API-KEY': `${WAHA_API_KEY}` },
       method: 'GET',
     });

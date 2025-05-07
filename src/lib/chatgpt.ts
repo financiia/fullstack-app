@@ -77,47 +77,7 @@ const TOOLS: OpenAI.Chat.ChatCompletionCreateParams['tools'] = [
       description: 'Explica o uso do sistema',
     },
   },
-  {
-    type: 'function',
-    function: {
-      name: 'get_last_transactions',
-      description: 'Retorna as últimas transações do usuário',
-      parameters: {
-        type: 'object',
-        properties: {
-          limit_days: {
-            type: 'number',
-            description: 'Número de dias para retornar as transações. Se não for informado, retorna as últimas 5 dias',
-          },
-          limit_transactions: {
-            type: 'number',
-            description: 'Número de transações para retornar. Se não for informado, retorna as últimas 5 transações',
-          },
-        },
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'monthly_spending_summary',
-      description: 'Retorna um resumo do gasto do mês corrente',
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'spending_summary_30_days',
-      description: 'Retorna um resumo do gasto dos últimos 30 dias',
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'cancel_subscription',
-      description: 'Cancela a assinatura do usuário',
-    },
-  },
+
   {
     type: 'function',
     function: {

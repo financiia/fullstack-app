@@ -1,0 +1,17 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+    command: npm run dev
+    network_mode: host
+  waha:
+    image: seqqal/waha-plus:latest
+    volumes:
+      - ./waha-sessions:/app/.sessions
+    env_file:
+      - .env.waha
+    network_mode: host
+# docker compose up --no-attach waha
