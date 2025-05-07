@@ -223,6 +223,14 @@ export default class ChatGPT {
   }
 
   async getResponseREST(message: string, assistantMessage?: string) {
+    const messages = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: message },
+    ];
+    if (assistantMessage) {
+      messages.splice(1, 0, { role: 'assistant', content: assistantMessage });
+    }
+
     const response = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
       method: 'POST',
       headers: {
@@ -231,16 +239,16 @@ export default class ChatGPT {
       },
       body: JSON.stringify({
         model: 'gemini-2.0-flash',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'assistant', content: assistantMessage },
-          { role: 'user', content: message },
-        ],
+        messages,
         tools: TOOLS,
         tool_choice: 'required',
       }),
     });
     const data = await response.json();
+    if (!data.choices) {
+      console.error(data[0].error);
+      throw new Error(data[0].error.message);
+    }
     const functionCalled = data.choices[0].message.tool_calls[0].function;
     return functionCalled;
   }

@@ -232,11 +232,11 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
       processedMessage = transcription.transcript;
     }
 
-    // Handle special commands
-    if (processedMessage === 'cancelar') {
-      await this.handleCancellation(id, from, user.id, replyTo);
-      return Response.json({ status: 200, message: 'Webhook received' });
-    }
+    // // Handle special commands
+    // if (processedMessage === 'cancelar') {
+    //   await this.handleCancellation(id, from, user.id, replyTo);
+    //   return Response.json({ status: 200, message: 'Webhook received' });
+    // }
 
     // if (processedMessage === '\\historico') {
     //   await this.handleHistory(id, from, user.id);
@@ -248,13 +248,8 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
     //   return Response.json({ status: 200, message: 'Handled' });
     // }
 
-    let assistantMessage = null;
-    if (replyTo?.id) {
-      const message = await this.waha.getMessage(replyTo.id);
-      assistantMessage = message.body;
-    }
     // Process message with ChatGPT
-    const functionCalled = await this.chatgpt.getResponseREST(processedMessage, assistantMessage);
+    const functionCalled = await this.chatgpt.getResponseREST(processedMessage, replyTo?.body);
 
     await this.handleFunctionCall(functionCalled);
   }

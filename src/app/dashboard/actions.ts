@@ -98,11 +98,11 @@ export async function getActiveSubscription() {
   });
 
   if (!user_data) {
-    return { error: 'User not found' };
+    return { error: 'Usuário não encontrado' };
   }
 
   if (!user_data.stripe_customer_id) {
-    return { error: 'Stripe customer ID not found' };
+    return { error: 'ID do cliente Stripe não encontrado' };
   }
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
@@ -113,7 +113,7 @@ export async function getActiveSubscription() {
   // @ts-ignore
   const subscription = subscriptions.data.find((subscription) => subscription.plan.active);
   if (!subscription) {
-    return { error: 'Nenhuma assinatura ativa' };
+    return { error: 'Nenhum plano ativo' };
   }
 
   return { subscription: subscription };

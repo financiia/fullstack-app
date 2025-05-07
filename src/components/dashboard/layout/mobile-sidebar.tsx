@@ -13,7 +13,7 @@ export function MobileSidebar() {
           <span className="sr-only">Toggle navigation menu</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="flex flex-col">
+      <SheetContent side="left" className="flex flex-col not-md:px-2">
         <Sidebar />
         <SidebarUserInfo />
       </SheetContent>

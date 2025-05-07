@@ -67,17 +67,21 @@
     color: #4b4f4f;
   }
   &.dashboard-sidebar-items-active {
-    background: #161d1d;
+    background: var(--primary) !important;
+    border-radius: 10px;
+    color: var(--primary-foreground) !important;
     svg.lucide {
-      color: hsl(var(--primary));
+      color: var(--primary-foreground) !important;
     }
   }
 }
 
 .dashboard-sidebar-items:hover {
-  background: #161d1d;
+  background: #d5d5d5;
+  color: var(--primary);
+  border-radius: 10px;
   svg.lucide {
-    color: hsl(var(--primary));
+    color: var(--primary);
   }
 }
 
@@ -109,4 +113,8 @@
     rgba(255, 248, 0, 0.6) 50%,
     rgba(255, 255, 255, 0) 85%
   );
+}
+
+.highcharts-credits {
+  display: none !important;
 }

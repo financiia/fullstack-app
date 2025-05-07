@@ -103,8 +103,8 @@ export default class Waha {
     return response.json();
   }
 
-  async getMessage(messageId: string) {
-    const response = await fetch(`${WAHA_BASE_URL}/messages?messageId=${messageId}&session=Financiia`, {
+  async getMessage(phone: string, messageId: string) {
+    const response = await fetch(`${WAHA_BASE_URL}/Financiia/chats/${phone}/messages/${messageId}`, {
       headers: { 'X-API-KEY': `${WAHA_API_KEY}` },
       method: 'GET',
     });
