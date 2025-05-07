@@ -26,24 +26,101 @@ const TOOLS: OpenAI.Chat.ChatCompletionCreateParams['tools'] = [
     type: 'function',
     function: {
       name: 'register_transaction',
-      description: 'Registra uma transação do usuário',
+      description: 'Registra uma nova transação financeira do usuário, como uma despesa ou receita',
       parameters: {
         type: 'object',
         properties: {
-          tipo: { type: 'string', description: 'Tipo da transação: "despesa" ou "receita"' },
-          valor: { type: 'number', description: 'Valor da transação' },
+          tipo: {
+            type: 'string',
+            description: 'Tipo da transação. Pode ser "despesa" (saída de dinheiro) ou "receita" (entrada de dinheiro)',
+            enum: ['despesa', 'receita'],
+          },
+          valor: {
+            type: 'number',
+            description: 'Valor numérico da transação. Não use símbolos como R$ ou vírgulas.',
+          },
           categoria: {
             type: 'string',
             description:
-              'Categoria da transação. Sempre um entre ["alimentação", "transporte", "moradia", "saúde", "lazer", "outros"]',
+              'Categoria da transação. Deve ser uma entre: "alimentação", "transporte", "moradia", "saúde", "lazer", "outros".',
+            enum: ['alimentação', 'transporte', 'moradia', 'saúde', 'lazer', 'outros'],
           },
-          data: { type: 'string', description: 'Data da transação no formato ISOSTRING' },
+          data: {
+            type: 'string',
+            description:
+              'Data da transação no formato ISO 8601 (ex: 2025-05-07T14:30:00Z). Use a data atual se nenhuma data for fornecida.',
+          },
           descricao: {
             type: 'string',
-            description: 'Descrição da transação. Você pode editar o que o usuário disse para melhorar a legibilidade',
+            description: 'Descrição curta e clara da transação. Pode ser reescrita a partir da mensagem do usuário.',
           },
-          recorrente: { type: 'boolean', description: 'Se a transação é recorrente' },
+          recorrente: {
+            type: 'boolean',
+            description: 'Indica se a transação se repete regularmente (ex: mensalmente).',
+          },
         },
+        required: ['tipo', 'valor', 'categoria', 'data', 'descricao', 'recorrente'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_transaction',
+      description: 'Atualiza uma transação existente do usuário. O ID deve estar disponível no histórico da conversa.',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'ID da transação a ser atualizada. Deve ser obtido a partir do histórico.',
+          },
+          tipo: {
+            type: 'string',
+            description: 'Tipo atualizado da transação, se for o caso. Pode ser "despesa" ou "receita".',
+            enum: ['despesa', 'receita'],
+          },
+          valor: {
+            type: 'number',
+            description: 'Valor atualizado da transação.',
+          },
+          categoria: {
+            type: 'string',
+            description:
+              'Categoria atualizada. Deve ser uma entre: "alimentação", "transporte", "moradia", "saúde", "lazer", "outros".',
+            enum: ['alimentação', 'transporte', 'moradia', 'saúde', 'lazer', 'outros'],
+          },
+          data: {
+            type: 'string',
+            description: 'Nova data da transação no formato ISO 8601, se for atualizada.',
+          },
+          descricao: {
+            type: 'string',
+            description: 'Nova descrição da transação.',
+          },
+          recorrente: {
+            type: 'boolean',
+            description: 'Se a recorrência foi alterada, indique aqui.',
+          },
+        },
+        required: ['id'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'cancel_transaction',
+      description: 'Cancela uma transação existente do usuário com base no ID registrado no histórico.',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'ID da transação a ser cancelada. Deve estar disponível no histórico da conversa.',
+          },
+        },
+        required: ['id'],
       },
     },
   },
@@ -55,7 +132,7 @@ export default class TransactionsAgent {
     this.messageHistory = messageHistory;
   }
 
-  async getResponse(message: string) {
+  async getResponse() {
     const messages = [{ role: 'system', content: SYSTEM_PROMPT }, ...this.messageHistory];
 
     const response = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {

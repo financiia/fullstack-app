@@ -129,7 +129,7 @@ export default class UnregisteredAgent {
       if (JSON.parse(functionCalled.arguments).agent === 'transaction_agent') {
         console.log('DELEGATING TO TRANSACTION AGENT');
         const transactionAgent = new TransactionsAgent(this.messageHistory);
-        return transactionAgent.getResponse(message);
+        return transactionAgent.getResponse();
       }
     }
 
