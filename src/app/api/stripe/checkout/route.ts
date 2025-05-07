@@ -1,7 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest } from 'next/server';
 import Stripe from 'stripe';
-import prisma from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   const { priceId, nickname } = await request.json();
@@ -11,15 +10,12 @@ export async function POST(request: NextRequest) {
     data: { user },
     error,
   } = await supabase.auth.getUser();
-  if (error) {
-    return Response.json({ error: error.message }, { status: 401 });
+  if (error || !user) {
+    return Response.json({ error: error?.message || 'Unauthorized' }, { status: 401 });
   }
 
   // Update the user's nickname
-  await prisma.users.update({
-    where: { id: user?.id },
-    data: { nickname },
-  });
+  await supabase.from('users').update({ nickname }).eq('id', user?.id);
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
   const session = await stripe.checkout.sessions.create({

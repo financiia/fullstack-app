@@ -4,5 +4,8 @@
   "tabWidth": 2,
   "printWidth": 120,
   "trailingComma": "all",
-  "bracketSpacing": true
+  "bracketSpacing": true,
+  "rules": {
+    "prefer-const": "off"
+  }
 }

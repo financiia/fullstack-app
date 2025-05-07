@@ -1,5 +1,4 @@
 import Stripe from 'stripe';
-import prisma from '@/lib/prisma';
 import { createClient } from '@/utils/supabase/server-internal';
 
 export async function invoices() {
@@ -8,17 +7,13 @@ export async function invoices() {
     data: { user },
     error,
   } = await supabase.auth.getUser();
-  console.log(user);
-  if (error) {
-    return { error: error.message };
+
+  if (error || !user) {
+    return { error: error?.message || 'User not found' };
   }
 
   // Get stripe customer id
-  const user_data = await prisma.users.findUnique({
-    where: {
-      id: user?.id,
-    },
-  });
+  const { data: user_data } = await supabase.from('users').select().eq('id', user.id).single();
 
   const stripe_customer_id = user_data?.stripe_customer_id;
   if (!stripe_customer_id) {
@@ -33,7 +28,6 @@ export async function invoices() {
   const subscriptions = await stripe.subscriptions.list({
     customer: stripe_customer_id,
   });
-  console.log(subscriptions);
 
   return { invoices: invoices.data, subscriptions: subscriptions.data };
 }
@@ -53,22 +47,18 @@ export async function createUserPortal() {
   }
 
   // Get the customer id from the user
-  const customer = await prisma.users.findUnique({
-    where: {
-      id: user.id,
-    },
-  });
-  if (!customer) {
+  const { data: user_data } = await supabase.from('users').select().eq('id', user.id).single();
+  if (!user_data) {
     return { error: 'Customer not found' };
   }
-  if (!customer.stripe_customer_id) {
+  if (!user_data.stripe_customer_id) {
     return { error: 'Customer not found' };
   }
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
   const session = await stripe.billingPortal.sessions
     .create({
-      customer: customer.stripe_customer_id,
+      customer: user_data.stripe_customer_id,
       return_url: `${process.env.NEXT_PUBLIC_URL}/dashboard/billing`,
       locale: 'pt-BR',
     })
@@ -91,11 +81,7 @@ export async function getActiveSubscription() {
     return { error: 'User not found' };
   }
 
-  const user_data = await prisma.users.findUnique({
-    where: {
-      id: user.id,
-    },
-  });
+  const { data: user_data } = await supabase.from('users').select().eq('id', user.id).single();
 
   if (!user_data) {
     return { error: 'Usuário não encontrado' };
@@ -105,16 +91,15 @@ export async function getActiveSubscription() {
     return { error: 'ID do cliente Stripe não encontrado' };
   }
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
-  const subscriptions = await stripe.subscriptions.list({
-    customer: user_data.stripe_customer_id,
-  });
+  if (!user_data.stripe_active_subscription_id) {
+    return { error: 'Nenhum plano ativo' };
+  }
 
-  // @ts-ignore
-  const subscription = subscriptions.data.find((subscription) => subscription.plan.active);
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
+  const subscription = await stripe.subscriptions.retrieve(user_data.stripe_active_subscription_id);
   if (!subscription) {
     return { error: 'Nenhum plano ativo' };
   }
 
-  return { subscription: subscription };
+  return { subscription };
 }

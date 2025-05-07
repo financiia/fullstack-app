@@ -3,6 +3,76 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      metas: {
+        Row: {
+          categoria: string;
+          created_at: string;
+          id: number;
+          user_id: string | null;
+          valor: string;
+        };
+        Insert: {
+          categoria: string;
+          created_at?: string;
+          id?: number;
+          user_id?: string | null;
+          valor: string;
+        };
+        Update: {
+          categoria?: string;
+          created_at?: string;
+          id?: number;
+          user_id?: string | null;
+          valor?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'metas_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      recurrent_transactions: {
+        Row: {
+          categoria: string;
+          created_at: string;
+          descricao: string;
+          id: number;
+          subcategorias: string[] | null;
+          user_id: string | null;
+          valor: number;
+        };
+        Insert: {
+          categoria: string;
+          created_at?: string;
+          descricao: string;
+          id?: number;
+          subcategorias?: string[] | null;
+          user_id?: string | null;
+          valor: number;
+        };
+        Update: {
+          categoria?: string;
+          created_at?: string;
+          descricao?: string;
+          id?: number;
+          subcategorias?: string[] | null;
+          user_id?: string | null;
+          valor?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'transacoes_recorrentes_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       transactions: {
         Row: {
           categoria: string;
@@ -10,6 +80,7 @@ export type Database = {
           data: string;
           descricao: string;
           id: number;
+          recurrent_transaction_id: number | null;
           user_id: string;
           valor: number;
           whatsapp_message_id: string;
@@ -20,6 +91,7 @@ export type Database = {
           data: string;
           descricao: string;
           id?: number;
+          recurrent_transaction_id?: number | null;
           user_id: string;
           valor: number;
           whatsapp_message_id: string;
@@ -30,9 +102,52 @@ export type Database = {
           data?: string;
           descricao?: string;
           id?: number;
+          recurrent_transaction_id?: number | null;
           user_id?: string;
           valor?: number;
           whatsapp_message_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'transactions_recurrent_transaction_id_fkey';
+            columns: ['recurrent_transaction_id'];
+            isOneToOne: false;
+            referencedRelation: 'recurrent_transactions';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'transactions_user_id_fkey1';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      users: {
+        Row: {
+          created_at: string;
+          id: string;
+          nickname: string | null;
+          stripe_active_subscription_id: string | null;
+          stripe_customer_id: string | null;
+          whatsapp_phone: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          id: string;
+          nickname?: string | null;
+          stripe_active_subscription_id?: string | null;
+          stripe_customer_id?: string | null;
+          whatsapp_phone?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          nickname?: string | null;
+          stripe_active_subscription_id?: string | null;
+          stripe_customer_id?: string | null;
+          whatsapp_phone?: string | null;
         };
         Relationships: [];
       };

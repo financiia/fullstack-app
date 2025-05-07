@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { FeaturedCardGradient } from '@/components/gradients/featured-card-gradient';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { createCheckoutSession } from '@/utils/stripe/server';
 
 export function Pricing() {
   return (
@@ -50,21 +51,5 @@ export function Pricing() {
         ))}
       </div>
     </section>
-  );
-}
-
-export function StripeButton() {
-  const onClick = async () => {
-    const response = await fetch('/api/stripe/checkout', {
-      method: 'POST',
-      body: JSON.stringify({ priceId: 'price_1RLQMPPGjwv1HAuwRuvVQK6t' }),
-    });
-    const data = await response.json();
-    window.location.href = data.session.url;
-  };
-  return (
-    <button id="checkout-button" type="button" onClick={onClick}>
-      Checkout
-    </button>
   );
 }

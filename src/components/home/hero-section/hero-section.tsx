@@ -21,8 +21,8 @@ export function HeroSection() {
                 className="w-auto block"
                 src={'/assets/marillia/transacoes.jpg'}
                 alt={'Marillia'}
-                width={250}
-                height={250}
+                width={300}
+                height={300}
               />
             </div>
             <div className={'align-middle rounded-2xl overflow-hidden'}>
@@ -30,8 +30,8 @@ export function HeroSection() {
                 className="w-auto block"
                 src={'/assets/marillia/transacoes.jpg'}
                 alt={'Marillia'}
-                width={250}
-                height={250}
+                width={300}
+                height={300}
               />
             </div>
           </div>

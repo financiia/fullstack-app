@@ -14,7 +14,8 @@
     "prettier": "prettier --write --ignore-unknown .",
     "prettier:check": "prettier --check --ignore-unknown .",
     "lint-staged": "lint-staged",
-    "prisma:generate": "prisma db pull && prisma generate && next build"
+    "prisma:generate": "prisma db pull && prisma generate && next build",
+    "supabase:generate": "supabase gen types typescript --project-id vlbmuhkmplmhtkuwgolu > src/lib/database.types.ts"
   },
   "git": {
     "pre-commit": "lint-staged"
@@ -60,7 +61,6 @@
     "react-telefone-brasileiro": "^1.0.5",
     "reactjs-otp-input": "^2.0.10",
     "stripe": "^18.1.0",
-    "supabase": "^2.22.12",
     "tailwind-merge": "^3.2.0",
     "tailwindcss-animate": "^1.0.7"
   },
@@ -78,6 +78,7 @@
     "lint-staged": "^15.5.1",
     "postcss": "^8.5.3",
     "prettier": "^3.5.3",
+    "supabase": "^2.22.12",
     "tailwindcss": "^4.1.4",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.4",

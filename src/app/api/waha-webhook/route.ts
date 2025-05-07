@@ -1,11 +1,12 @@
 import { NextRequest } from 'next/server';
 import Waha from '@/lib/waha';
 import ChatGPT from '@/lib/chatgpt';
-import prisma from '@/lib/prisma';
 import { createClient } from '@deepgram/sdk';
 import { capitalize, groupBy, sumBy } from 'lodash';
-import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { Database } from '@/lib/database.types';
+import { createClient as createSupabaseClient } from '@/utils/supabase/server-internal';
+import { createCheckoutSession } from '@/utils/stripe/server';
 
 /**
  * Handles incoming WhatsApp webhook requests
@@ -13,19 +14,38 @@ import Stripe from 'stripe';
 export class WhatsAppWebhookHandler {
   private waha: Waha;
   private chatgpt: ChatGPT;
-  private supabase: SupabaseClient;
+  // @ts-expect-error Supabase client is not available in the constructor
+  private supabase: Awaited<ReturnType<typeof createSupabaseClient>>;
   private stripe: Stripe;
-  private user: Awaited<ReturnType<typeof prisma.users.findUnique>> | undefined;
-  private payload: any;
+  private user: Database['public']['Tables']['users']['Row'] | undefined;
+  private nextRequest: NextRequest;
+  // @ts-expect-error Request json is not available in the constructor
+  private payload: {
+    id: string;
+    body: string;
+    from: string;
+    fromMe: boolean;
+    hasMedia: boolean;
+    media: { url: string; mimetype: string };
+    replyTo: { id: string; body: string };
+  };
 
-  constructor() {
+  constructor(nextRequest: NextRequest) {
     this.waha = new Waha();
     this.chatgpt = new ChatGPT();
-    this.supabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!, // Never expose this to the client!
-    );
     this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+    this.nextRequest = nextRequest;
+  }
+
+  async setupInstance() {
+    this.supabase = await createSupabaseClient();
+    this.payload = await this.nextRequest.json();
+    const { data: user } = await this.supabase.from('users').select().eq('id', this.payload.from).single();
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    this.user = user;
   }
 
   /**
@@ -59,17 +79,22 @@ export class WhatsAppWebhookHandler {
       email_confirm: true,
     });
 
+    if (!user) {
+      throw new Error('Failed to create user');
+    }
+
     const contactInfo = await this.waha.getContactInfo(from);
     if (!contactInfo) {
       throw new Error('Failed to get contact info');
     }
 
-    await prisma.users.update({
-      where: { id: user?.id },
-      data: { phone: from, whatsapp_phone: from, nickname: contactInfo.pushname, phone_confirmed_at: new Date() },
+    await this.supabase.from('users').insert({
+      id: user.id,
+      whatsapp_phone: from,
+      nickname: contactInfo.pushname,
     });
 
-    const session = await this.createStripeLink(user?.id as string);
+    const session = await createCheckoutSession(user.id);
     if (!session) {
       throw new Error('Failed to create stripe link');
     }
@@ -95,14 +120,13 @@ Espero poder te ajudar no futuro!
       return;
     }
 
-    const transactions = await prisma.transactions.findMany({
-      where: {
-        user_id: userId,
-        whatsapp_message_id: replyTo.id,
-      },
-    });
+    const { data: transactions } = await this.supabase
+      .from('transactions')
+      .select()
+      .eq('user_id', userId)
+      .eq('whatsapp_message_id', replyTo.id);
 
-    if (transactions.length === 0) {
+    if (!transactions?.length) {
       await this.waha.sendMessageWithTyping(
         messageId,
         from,
@@ -111,12 +135,7 @@ Espero poder te ajudar no futuro!
       return;
     }
 
-    await prisma.transactions.delete({
-      where: {
-        id: transactions[0].id,
-      },
-    });
-
+    await this.supabase.from('transactions').delete().eq('id', transactions[0].id);
     await this.waha.sendMessageWithTyping(messageId, from, 'Transação cancelada com sucesso!');
   }
 
@@ -130,14 +149,22 @@ Espero poder te ajudar no futuro!
     limit_days?: number,
     limit_transactions?: number,
   ) {
-    const transactions = await prisma.transactions.findMany({
-      where: {
-        user_id: userId,
-        data: { gte: limit_days ? new Date(new Date().getTime() - limit_days * 24 * 60 * 60 * 1000) : undefined },
-      },
-      orderBy: { data: 'desc' },
-      take: (limit_transactions ?? limit_days) ? 30 : 5,
-    });
+    const { data: transactions } = await this.supabase
+      .from('transactions')
+      .select()
+      .eq('user_id', userId)
+      .gte('data', limit_days ? new Date(new Date().getTime() - limit_days * 24 * 60 * 60 * 1000) : undefined)
+      .order('data', { ascending: false })
+      .limit(limit_transactions ?? limit_days ?? 5);
+
+    if (!transactions?.length) {
+      await this.waha.sendMessageWithTyping(
+        messageId,
+        from,
+        'Você não tem nenhuma transação registrada no período selecionado.',
+      );
+      return;
+    }
 
     const message = `
 *Histórico de transações:*
@@ -165,12 +192,11 @@ ${transactions
     const firstDayOfMonth = new Date();
     firstDayOfMonth.setDate(1);
 
-    const transactions = await prisma.transactions.findMany({
-      where: {
-        user_id: userId,
-        data: { gte: last_30_days ? new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000) : firstDayOfMonth },
-      },
-    });
+    const { data: transactions } = await this.supabase
+      .from('transactions')
+      .select()
+      .eq('user_id', userId)
+      .gte('data', last_30_days ? new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000) : firstDayOfMonth);
 
     const groupedByCategory = groupBy(transactions, 'categoria');
     const sortedCategories = Object.entries(groupedByCategory)
@@ -194,27 +220,12 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
   /**
    * Main handler for webhook requests
    */
-  public async handleRequest(request: NextRequest) {
-    const requestBody = await request.json();
-    const {
-      payload: { id, body: message, from, fromMe, hasMedia, media, replyTo },
-    } = requestBody;
-    this.payload = requestBody.payload;
+  public async handleRequest() {
+    const { id, body: message, from, fromMe, hasMedia, media, replyTo } = this.payload;
 
     // Ignore messages from self or specific number
     if (fromMe || from === '5512981638494@c.us') {
       return Response.json({ status: 200, message: 'Webhook received' });
-    }
-
-    // Check if user exists
-    const user = await prisma.users.findFirst({
-      where: { phone: from },
-    });
-    this.user = user;
-
-    if (!user) {
-      await this.handleUnregisteredUser(id, from);
-      return Response.json({ status: 200, message: 'Handled' });
     }
 
     // Handle audio messages
@@ -257,23 +268,14 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
   async handleFunctionCall(functionCalled: { name: string; arguments: string }) {
     switch (functionCalled.name) {
       case 'cancel_subscription':
-        // return this.waha.sendMessageWithButtons(null, '5521936181803@c.us', [{ type: 'reply', text: 'Cancelar Plano' }], 'Você tem certeza que deseja cancelar o seu plano?', 'Se sim, clique no botão abaixo', 'A ação poderá ser desfeita até o dia 30/05');
         return this.waha.sendMessageWithTyping(
           this.payload.id,
           this.payload.from,
           '*CANCELAMENTO DE ASSINATURA*\n\nVocê tem certeza que deseja cancelar o seu plano?\n\nSe sim, responda essa mensagem com "cancelar"',
         );
       case 'cancel_subscription_confirmation':
-        // Get stripe customer
-        const stripeCustomer = await this.stripe.customers.retrieve(this.user!.stripe_customer_id as string);
-        // Get active subscription
-        const subscriptions = await this.stripe.subscriptions.list({
-          customer: stripeCustomer.id,
-        });
-        // @ts-ignore
-        const activeSubscription = subscriptions.data.find((subscription) => subscription.plan.active);
+        const activeSubscription = this.user?.stripe_active_subscription_id;
         if (!activeSubscription) {
-          // await this.stripe.subscriptions.cancel(this.user!.stripe_subscription_id);
           return this.waha.sendMessageWithTyping(
             this.payload.id,
             this.payload.from,
@@ -282,7 +284,7 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
         }
 
         // Cancel subscription
-        await this.stripe.subscriptions.cancel(activeSubscription.id);
+        await this.stripe.subscriptions.cancel(activeSubscription);
 
         return this.waha.sendMessageWithTyping(this.payload.id, this.payload.from, 'Assinatura cancelada com sucesso!');
       case 'register_transaction':
@@ -294,25 +296,23 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
           this.payload.from,
           this.beautifyTransaction(transaction),
         );
-        await prisma.transactions.create({
-          data: {
-            user_id: this.user!.id,
-            categoria: transaction.categoria,
-            valor: transaction.valor,
-            data: transaction.data,
-            descricao: transaction.descricao,
-            whatsapp_message_id: messageId,
-          },
+        await this.supabase.from('transactions').insert({
+          user_id: this.user!.id,
+          categoria: transaction.categoria,
+          valor: transaction.valor,
+          data: transaction.data,
+          descricao: transaction.descricao,
+          whatsapp_message_id: messageId,
         });
         return;
       case 'update_transaction':
         const transactionUpdate = JSON.parse(functionCalled.arguments);
-        const currentTransaction = await prisma.transactions.findFirst({
-          where: {
-            user_id: this.user!.id,
-            whatsapp_message_id: this.payload.replyTo.id,
-          },
-        });
+        const { data: currentTransaction } = await this.supabase
+          .from('transactions')
+          .select()
+          .eq('user_id', this.user!.id)
+          .eq('whatsapp_message_id', this.payload.replyTo.id)
+          .single();
 
         if (!currentTransaction) {
           await this.waha.sendMessageWithTyping(
@@ -323,11 +323,7 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
           return;
         }
 
-        await prisma.transactions.update({
-          where: { id: currentTransaction!.id },
-          data: transactionUpdate,
-        });
-
+        await this.supabase.from('transactions').update(transactionUpdate).eq('id', currentTransaction.id);
         await this.waha.sendMessageWithTyping(this.payload.id, this.payload.from, 'Transação atualizada com sucesso!');
         return;
       case 'cancel_transaction':
@@ -405,39 +401,14 @@ Agora sua meta mensal é de *R$ ${valor.toFixed(2)}* para a categoria *${capital
       'Ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.',
     );
   }
-
-  async createStripeLink(userId: string) {
-    return await this.stripe.checkout.sessions.create({
-      client_reference_id: userId,
-      billing_address_collection: 'auto',
-      line_items: [
-        {
-          price: 'price_1RLQMPPGjwv1HAuwRuvVQK6t',
-          // For metered billing, do not pass quantity
-          quantity: 1,
-        },
-      ],
-      subscription_data: {
-        trial_period_days: 30,
-        trial_settings: {
-          end_behavior: {
-            missing_payment_method: 'cancel',
-          },
-        },
-      },
-      mode: 'subscription',
-      success_url: `${process.env.NEXT_PUBLIC_URL}/api/stripe/success?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_URL}/api/stripe/cancel?canceled=true`,
-      locale: 'pt-BR',
-    });
-  }
 }
 
 // Export POST handler
 export async function POST(request: NextRequest) {
-  const handler = new WhatsAppWebhookHandler();
+  const handler = new WhatsAppWebhookHandler(request);
+  await handler.setupInstance();
   try {
-    await handler.handleRequest(request);
+    await handler.handleRequest();
   } catch (e) {
     console.error(e);
     await handler.showErrorMessage();

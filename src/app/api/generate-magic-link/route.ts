@@ -1,49 +1,41 @@
 import { NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import Waha from '@/lib/waha';
-import prisma from '@/lib/prisma';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!, // Never expose this to the client!
-);
+import { createClient } from '@/utils/supabase/server-internal';
 
 export async function POST(req: NextRequest) {
-  const { phone } = await req.json();
-  const whatsappPhone = '55' + phone + '@c.us';
+  let { phone } = await req.json();
+  phone = '55' + phone.replace(/\D/g, '');
+  const whatsappPhone = phone + '@c.us';
+  const supabase = await createClient();
 
   // Check if user already exists
-  let userID = await prisma.users
-    .findUnique({
-      where: { phone: whatsappPhone },
-    })
-    .then((user) => user?.id);
+  let { data: publicUser } = await supabase.from('users').select('id, nickname').eq('phone', whatsappPhone).single();
 
+  let userID = publicUser?.id;
   if (!userID) {
     const {
       data: { user },
+      error,
     } = await supabase.auth.admin.createUser({
-      email: '55' + phone + '@supabase.io',
+      email: phone + '@supabase.io',
       email_confirm: true,
     });
-    userID = user?.id;
+    if (error || !user) {
+      return Response.json({ error: error?.message || 'No link returned' }, { status: 500 });
+    }
 
-    await prisma.users.update({
-      where: { id: userID },
-      data: { phone: whatsappPhone, whatsapp_phone: whatsappPhone },
-    });
+    userID = user.id;
+    const response = await supabase.from('users').insert({ id: userID, whatsapp_phone: whatsappPhone });
+    publicUser = response.data;
   }
 
   const { data, error } = await supabase.auth.admin.generateLink({
     type: 'magiclink',
-    email: '55' + phone + '@supabase.io',
-    options: {
-      redirectTo: 'http://localhost:3000/signup/verify', // optional
-    },
+    email: phone + '@supabase.io',
   });
 
   if (error || !data?.properties?.action_link) {
-    return Response.json({ error: error?.message || 'No link returned' }, { status: 400 });
+    return Response.json({ error: error?.message || 'No link returned' }, { status: 500 });
   }
 
   const OTP = data.properties.email_otp;
@@ -51,5 +43,10 @@ export async function POST(req: NextRequest) {
   const waha = new Waha();
   await waha.sendMessageWithTyping(null, whatsappPhone, 'Seu código de verificação é: ' + OTP);
 
-  return Response.json({ message: 'Magic link sent via WhatsApp' }, { status: 200 });
+  if (!publicUser?.nickname) {
+    const contactInfo = await waha.getContactInfo(whatsappPhone);
+    await supabase.from('users').update({ nickname: contactInfo.pushname }).eq('id', userID);
+  }
+
+  return Response.json({ message: 'OTP sent via WhatsApp' }, { status: 200 });
 }
