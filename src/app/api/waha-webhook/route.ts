@@ -9,7 +9,8 @@ import { createClient as createSupabaseClient } from '@/utils/supabase/server-in
 import UnregisteredAgent from '@/lib/ai/unregistered';
 import BaseAgent from '@/lib/ai/base';
 import { createCheckoutSession } from '@/utils/stripe/server';
-import { TransactionsHandler } from '@/lib/ai/transactions';
+import OpenAI from 'openai';
+import FunctionHandler from '@/lib/ai/base-handler';
 /**
  * Handles incoming WhatsApp webhook requests
  */
@@ -279,50 +280,60 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
 
     let messageHistory: (typeof this.payload)[] = await this.waha.getMessages(from);
     messageHistory.sort((a, b) => a.timestamp - b.timestamp);
-    messageHistory = messageHistory.slice(-1); // Só as últimas 10 mensagens
+    messageHistory = messageHistory.slice(-10); // Só as últimas 10 mensagens
     messageHistory[messageHistory.length - 1].body = processedMessage; // Caso seja áudio.
 
-    const messageHistoryGPT = messageHistory.map((message: typeof this.payload) => {
-      // let messageOutput = `${message.id.split('_')[2]}: ${message.body}`;
-      // if (!message.fromMe && message.replyTo?.id) {
-      //   messageOutput = `In reply to: ${message.replyTo.id} -- ${messageOutput}`;
-      // }
-
-      const output = {
-        role: message.fromMe ? 'assistant' : 'user',
-        content: message.body,
-      };
-      return output;
-    });
+    const messageHistoryGPT: OpenAI.Responses.ResponseInputItem[] = messageHistory.map(
+      (message: typeof this.payload) => {
+        const output: OpenAI.Responses.ResponseInputItem = {
+          role: message.fromMe ? 'assistant' : 'user',
+          content: message.body,
+        };
+        return output;
+      },
+    );
 
     const baseAgent = new BaseAgent(messageHistoryGPT);
-    let { functionCalled, outputMessage } = await baseAgent.getResponse();
-    if (outputMessage) {
-      console.log('OUTPUT MESSAGE: ', outputMessage);
-      const messages = outputMessage.split('•');
-      for (const message of messages) {
-        await this.waha.sendMessageWithTyping(id, from, message.trim());
-        await new Promise((resolve) => setTimeout(resolve, 200));
-      }
-    }
-    if (functionCalled) {
-      if (functionCalled.handler === 'transactions') {
-        const transactionsHandler = new TransactionsHandler(
-          this.payload,
-          this.user!,
-          this.supabase,
-          this.stripe,
-          this.waha,
-        );
-        await transactionsHandler.handleFunctionCall(functionCalled);
-      }
-      // await this.waha.sendMessageWithTyping(
-      //   id,
-      //   from,
-      //   `*Function called:* ${functionCalled.name}\n\nArgumentos: ${functionCalled.arguments}`,
-      // );
-      // await this.handleFunctionCall(functionCalled);
-    }
+    const serverHandler = new FunctionHandler(this.payload, this.user!, this.supabase, this.stripe, this.waha);
+    const tokens = await baseAgent.getResponse(serverHandler);
+    console.log('TOKENS GASTOS: ', tokens);
+    // if (output.type === 'message' && output.content[0].type === 'output_text') {
+    //   console.log('OUTPUT MESSAGE: ', output.content[0].text);
+    //   const messages = output.content[0].text.split('•');
+    //   for (const message of messages) {
+    //     await this.waha.sendMessageWithTyping(id, from, message.trim());
+    //     await new Promise((resolve) => setTimeout(resolve, 200));
+    //   }
+    // }
+    // // TYPEGUARD
+    // if ('handler' in output) {
+    //   if (output.handler === 'transactions') {
+    //     console.log('CALLING TRANSACTIONS HANDLER', output.name, JSON.parse(output.arguments));
+    //     const transactionsHandler = new TransactionsHandler(
+    //       this.payload,
+    //       this.user!,
+    //       this.supabase,
+    //       this.stripe,
+    //       this.waha,
+    //     );
+    //     const result = await transactionsHandler.handleFunctionCall(output);
+    //     const output2 = await output.callback(result);
+    //     if (output2.type === 'message' && output2.content[0].type === 'output_text') {
+    //       console.log('OUTPUT MESSAGE: ', output2.content[0].text);
+    //       const messages = output2.content[0].text.split('•');
+    //       for (const message of messages) {
+    //         await this.waha.sendMessageWithTyping(id, from, message.trim());
+    //         await new Promise((resolve) => setTimeout(resolve, 200));
+    //       }
+    //     }
+    //   }
+    // }
+    // await this.waha.sendMessageWithTyping(
+    //   id,
+    //   from,
+    //   `*Function called:* ${functionCalled.name}\n\nArgumentos: ${functionCalled.arguments}`,
+    // );
+    // await this.handleFunctionCall(functionCalled);
     // Process message with ChatGPT
     // const functionCalled = await this.chatgpt.getResponseREST(processedMessage, replyTo?.body);
 
