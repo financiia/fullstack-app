@@ -1,0 +1,10 @@
+services:
+  waha:
+    image: seqqal/waha-plus:latest
+    volumes:
+      - ./waha-sessions:/app/.sessions
+    env_file:
+      - .env.waha
+    ports:
+      - 3001:3001
+# docker compose up --no-attach waha
