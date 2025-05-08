@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server';
 import Waha from '@/lib/waha';
 import ChatGPT from '@/lib/chatgpt';
 import { createClient } from '@deepgram/sdk';
-import { capitalize, groupBy, sumBy } from 'lodash';
 import Stripe from 'stripe';
 import { Database } from '@/lib/database.types';
 import { createClient as createSupabaseClient } from '@/utils/supabase/server-internal';
@@ -143,112 +142,6 @@ Espero poder te ajudar no futuro!
   }
 
   /**
-   * Handles transaction cancellation request
-   */
-  private async handleCancellation(messageId: string, from: string, userId: string, replyTo?: { id: string }) {
-    if (!replyTo?.id) {
-      await this.waha.sendMessageWithTyping(messageId, from, 'Você deve marcar a transação que você quer cancelar.');
-      return;
-    }
-
-    const { data: transactions } = await this.supabase
-      .from('transactions')
-      .select()
-      .eq('user_id', userId)
-      .eq('whatsapp_message_id', replyTo.id);
-
-    if (!transactions?.length) {
-      await this.waha.sendMessageWithTyping(
-        messageId,
-        from,
-        'Não foi possível encontrar a transação que você quer cancelar.',
-      );
-      return;
-    }
-
-    await this.supabase.from('transactions').delete().eq('id', transactions[0].id);
-    await this.waha.sendMessageWithTyping(messageId, from, 'Transação cancelada com sucesso!');
-  }
-
-  /**
-   * Handles transaction history request
-   */
-  private async handleHistory(
-    messageId: string,
-    from: string,
-    userId: string,
-    limit_days?: number,
-    limit_transactions?: number,
-  ) {
-    const { data: transactions } = await this.supabase
-      .from('transactions')
-      .select()
-      .eq('user_id', userId)
-      .gte('data', limit_days ? new Date(new Date().getTime() - limit_days * 24 * 60 * 60 * 1000) : undefined)
-      .order('data', { ascending: false })
-      .limit(limit_transactions ?? limit_days ?? 5);
-
-    if (!transactions?.length) {
-      await this.waha.sendMessageWithTyping(
-        messageId,
-        from,
-        'Você não tem nenhuma transação registrada no período selecionado.',
-      );
-      return;
-    }
-
-    const message = `
-*Histórico de transações:*
-${transactions
-  .map(
-    (transaction) => `
-*${new Date(transaction.data).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })}* - ${transaction.descricao} - R$ ${transaction.valor}`,
-  )
-  .join('')}
-    `.trim();
-
-    await this.waha.sendMessageWithTyping(messageId, from, message);
-  }
-
-  /**
-   * Handles transaction summary request
-   */
-  private async handleSummary(messageId: string, from: string, userId: string, last_30_days: boolean) {
-    const firstDayOfMonth = new Date();
-    firstDayOfMonth.setDate(1);
-
-    const { data: transactions } = await this.supabase
-      .from('transactions')
-      .select()
-      .eq('user_id', userId)
-      .gte('data', last_30_days ? new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000) : firstDayOfMonth);
-
-    const groupedByCategory = groupBy(transactions, 'categoria');
-    const sortedCategories = Object.entries(groupedByCategory)
-      .map(([category, groupTransactions]) => ({
-        category,
-        total: sumBy(groupTransactions, (t) => +t.valor),
-        porcentagem: (sumBy(groupTransactions, (t) => +t.valor) / sumBy(transactions, (t) => +t.valor)) * 100,
-        quantidade: groupTransactions.length,
-      }))
-      .sort((a, b) => b.total - a.total);
-
-    const message = `
-*Resumo de transações dos últimos 30 dias:*
-
-${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${category.total} - ${category.porcentagem.toFixed(0)}% - ${category.quantidade} transações`).join('\n')}
-    `.trim();
-
-    await this.waha.sendMessageWithTyping(messageId, from, message);
-  }
-
-  /**
    * Main handler for webhook requests
    */
   public async handleRequest() {
@@ -296,177 +189,7 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
     const baseAgent = new BaseAgent(messageHistoryGPT);
     const serverHandler = new FunctionHandler(this.payload, this.user!, this.supabase, this.stripe, this.waha);
     const tokens = await baseAgent.getResponse(serverHandler);
-    console.log('TOKENS GASTOS: ', tokens);
-    // if (output.type === 'message' && output.content[0].type === 'output_text') {
-    //   console.log('OUTPUT MESSAGE: ', output.content[0].text);
-    //   const messages = output.content[0].text.split('•');
-    //   for (const message of messages) {
-    //     await this.waha.sendMessageWithTyping(id, from, message.trim());
-    //     await new Promise((resolve) => setTimeout(resolve, 200));
-    //   }
-    // }
-    // // TYPEGUARD
-    // if ('handler' in output) {
-    //   if (output.handler === 'transactions') {
-    //     console.log('CALLING TRANSACTIONS HANDLER', output.name, JSON.parse(output.arguments));
-    //     const transactionsHandler = new TransactionsHandler(
-    //       this.payload,
-    //       this.user!,
-    //       this.supabase,
-    //       this.stripe,
-    //       this.waha,
-    //     );
-    //     const result = await transactionsHandler.handleFunctionCall(output);
-    //     const output2 = await output.callback(result);
-    //     if (output2.type === 'message' && output2.content[0].type === 'output_text') {
-    //       console.log('OUTPUT MESSAGE: ', output2.content[0].text);
-    //       const messages = output2.content[0].text.split('•');
-    //       for (const message of messages) {
-    //         await this.waha.sendMessageWithTyping(id, from, message.trim());
-    //         await new Promise((resolve) => setTimeout(resolve, 200));
-    //       }
-    //     }
-    //   }
-    // }
-    // await this.waha.sendMessageWithTyping(
-    //   id,
-    //   from,
-    //   `*Function called:* ${functionCalled.name}\n\nArgumentos: ${functionCalled.arguments}`,
-    // );
-    // await this.handleFunctionCall(functionCalled);
-    // Process message with ChatGPT
-    // const functionCalled = await this.chatgpt.getResponseREST(processedMessage, replyTo?.body);
-
-    // await this.handleFunctionCall(functionCalled);
-  }
-
-  async handleFunctionCall(functionCalled: { name: string; arguments: string }) {
-    switch (functionCalled.name) {
-      case 'cancel_subscription':
-        return this.waha.sendMessageWithTyping(
-          this.payload.id,
-          this.payload.from,
-          '*CANCELAMENTO DE ASSINATURA*\n\nVocê tem certeza que deseja cancelar o seu plano?\n\nSe sim, responda essa mensagem com "cancelar"',
-        );
-      case 'cancel_subscription_confirmation':
-        const activeSubscription = this.user?.stripe_active_subscription_id;
-        if (!activeSubscription) {
-          return this.waha.sendMessageWithTyping(
-            this.payload.id,
-            this.payload.from,
-            'Você não possui uma assinatura ativa. Entre em contato com o suporte.',
-          );
-        }
-
-        // Cancel subscription
-        await this.stripe.subscriptions.cancel(activeSubscription);
-
-        return this.waha.sendMessageWithTyping(this.payload.id, this.payload.from, 'Assinatura cancelada com sucesso!');
-      case 'register_transaction':
-        const transaction = JSON.parse(functionCalled.arguments);
-
-        // Save transaction and send response
-        const messageId = await this.waha.sendMessageWithTyping(
-          this.payload.id,
-          this.payload.from,
-          this.beautifyTransaction(transaction),
-        );
-        await this.supabase.from('transactions').insert({
-          user_id: this.user!.id,
-          categoria: transaction.categoria,
-          valor: transaction.valor,
-          data: transaction.data,
-          descricao: transaction.descricao,
-          whatsapp_message_id: messageId,
-        });
-        return;
-      case 'update_transaction':
-        const transactionUpdate = JSON.parse(functionCalled.arguments);
-        const { data: currentTransaction } = await this.supabase
-          .from('transactions')
-          .select()
-          .eq('user_id', this.user!.id)
-          .eq('whatsapp_message_id', this.payload.replyTo.id)
-          .single();
-
-        if (!currentTransaction) {
-          await this.waha.sendMessageWithTyping(
-            this.payload.id,
-            this.payload.from,
-            'Não foi possível encontrar a transação que você quer atualizar. Entre em contato com o suporte.',
-          );
-          return;
-        }
-
-        await this.supabase.from('transactions').update(transactionUpdate).eq('id', currentTransaction.id);
-        await this.waha.sendMessageWithTyping(this.payload.id, this.payload.from, 'Transação atualizada com sucesso!');
-        return;
-      case 'cancel_transaction':
-        await this.handleCancellation(this.payload.id, this.payload.from, this.user!.id, this.payload.replyTo);
-        return;
-      case 'no_action':
-        return this.waha.sendMessageWithTyping(
-          this.payload.id,
-          this.payload.from,
-          JSON.parse(functionCalled.arguments).message,
-        );
-      case 'explain_usage':
-        return this.waha.sendMessageWithTyping(this.payload.id, this.payload.from, this._explainUsageMessage());
-      case 'get_last_transactions':
-        const { limit_days, limit_transactions } = JSON.parse(functionCalled.arguments);
-        return this.handleHistory(this.payload.id, this.payload.from, this.user!.id, limit_days, limit_transactions);
-      case 'monthly_spending_summary':
-        return this.handleSummary(this.payload.id, this.payload.from, this.user!.id, false);
-      case 'spending_summary_30_days':
-        return this.handleSummary(this.payload.id, this.payload.from, this.user!.id, true);
-      case 'define_monthly_goal':
-        const { tipo, valor } = JSON.parse(functionCalled.arguments);
-        return this.waha.sendMessageWithTyping(
-          this.payload.id,
-          this.payload.from,
-          this._defineMonthlyGoalMessage(tipo, valor),
-        );
-      default:
-        return 'Function not found';
-    }
-  }
-
-  beautifyTransaction(transaction: {
-    tipo: string;
-    valor: number;
-    categoria: string;
-    data: string;
-    descricao: string;
-    recorrente: boolean;
-  }) {
-    return `
-Despesa registrada! Confira os detalhes:
-
-Valor: *R$ ${transaction.valor.toFixed(2)}*
-Categoria: *${capitalize(transaction.categoria)}*
-Data: ${new Date(transaction.data).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })}
-Descrição: ${capitalize(transaction.descricao)}
-    `.trim();
-  }
-
-  _explainUsageMessage() {
-    return `
-O bot é uma ferramenta para ajudar você a gerenciar suas finanças.
-
-Você pode registrar despesas e receitas, consultar seu saldo, e muito mais!
-
-Para registrar uma despesa, basta descrever a transação em uma mensagem simples ou em áudio.
-
-Você pode, ainda, me perguntar sobre suas últimas transações, resumo do gasto do mês e definição de metas mensais.
-    `.trim();
-  }
-
-  _defineMonthlyGoalMessage(tipo: string, valor: number) {
-    return `
-Meta mensal definida!
-
-Agora sua meta mensal é de *R$ ${valor.toFixed(2)}* para a categoria *${capitalize(tipo)}*.
-    `.trim();
+    this.logger(`Total de tokens gastos: ${tokens}`);
   }
 
   async showErrorMessage() {
@@ -475,6 +198,10 @@ Agora sua meta mensal é de *R$ ${valor.toFixed(2)}* para a categoria *${capital
       this.payload.from,
       'Ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.',
     );
+  }
+
+  logger(message: string, level: 'log' | 'info' | 'error' = 'log') {
+    console[level]('\x1b[34m WEBHOOK HANDLER: \x1b[0m ', message);
   }
 }
 

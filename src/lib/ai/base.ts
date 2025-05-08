@@ -77,6 +77,6 @@ export default class DelegatorAgent {
   }
 
   logger(message: string, level: 'log' | 'info' | 'error' = 'log') {
-    console[level]('DELEGATOR AGENT: ', message);
+    console[level]('\x1b[34m DELEGATOR AGENT: \x1b[0m ', message);
   }
 }
