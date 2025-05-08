@@ -279,7 +279,7 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
 
     let messageHistory: (typeof this.payload)[] = await this.waha.getMessages(from);
     messageHistory.sort((a, b) => a.timestamp - b.timestamp);
-    messageHistory = messageHistory.slice(-10);
+    messageHistory = messageHistory.slice(-10); // Só as últimas 10 mensagens
     messageHistory[messageHistory.length - 1].body = processedMessage; // Caso seja áudio.
 
     const messageHistoryGPT = messageHistory.map((message: typeof this.payload) => {
@@ -299,11 +299,11 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
     let { functionCalled, outputMessage } = await baseAgent.getResponse();
     if (outputMessage) {
       console.log('OUTPUT MESSAGE: ', outputMessage);
-      const isMessageWithId = outputMessage.split(': ').length > 1;
-      if (isMessageWithId) {
-        outputMessage = outputMessage.split(': ').slice(1).join(': ');
+      const messages = outputMessage.split('•');
+      for (const message of messages) {
+        await this.waha.sendMessageWithTyping(id, from, message.trim());
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
-      await this.waha.sendMessageWithTyping(id, from, outputMessage);
     }
     if (functionCalled) {
       if (functionCalled.handler === 'transactions') {

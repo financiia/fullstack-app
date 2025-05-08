@@ -34,7 +34,8 @@ export default class Waha {
         'X-API-KEY': `${WAHA_API_KEY}`,
       },
       method: 'POST',
-      body: JSON.stringify({ chatId: phone, text: message, session: 'Financiia', reply_to: previousMessage }),
+      body: JSON.stringify({ chatId: phone, text: message, session: 'Financiia' }),
+      // body: JSON.stringify({ chatId: phone, text: message, session: 'Financiia', reply_to: previousMessage }),
     });
 
     await fetch(`${WAHA_BASE_URL}/stopTyping`, {
@@ -74,7 +75,7 @@ export default class Waha {
   async sendMessageWithButtons(
     previousMessage: string | null,
     phone: string,
-    buttons: { type: string; text: string }[],
+    buttons: { type: string; text: string; copyCode?: string }[],
     header?: string,
     body?: string,
     footer?: string,

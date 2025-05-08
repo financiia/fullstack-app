@@ -34,7 +34,7 @@ AGENTES:
 1. base_agent: Agente principal
   - Trata de assinaturas, resumos de gastos, cancelamento de assinaturas, etc.
 2. transaction_agent: Agente de transações
-  - Trata de transações financeiras
+  - Trata de transações financeiras, registro, atualização e cancelamento das transações
 3. goals_agent: Agente de metas financeiras
   - Trata de metas/limites financeiros
 `;
@@ -135,7 +135,7 @@ export default class UnregisteredAgent {
         const transactionAgent = new TransactionsAgent(this.messageHistory);
         return transactionAgent.getResponse();
       default:
-        throw new Error('Invalid agent');
+        throw new Error(`Invalid agent: ${JSON.parse(functionCalled.arguments).agent}`);
     }
   }
 }
