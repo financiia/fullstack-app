@@ -279,7 +279,7 @@ ${sortedCategories.map((category) => `*${capitalize(category.category)}* - R$ ${
 
     let messageHistory: (typeof this.payload)[] = await this.waha.getMessages(from);
     messageHistory.sort((a, b) => a.timestamp - b.timestamp);
-    messageHistory = messageHistory.slice(-10); // Só as últimas 10 mensagens
+    messageHistory = messageHistory.slice(-1); // Só as últimas 10 mensagens
     messageHistory[messageHistory.length - 1].body = processedMessage; // Caso seja áudio.
 
     const messageHistoryGPT = messageHistory.map((message: typeof this.payload) => {

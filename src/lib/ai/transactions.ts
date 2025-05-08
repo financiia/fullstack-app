@@ -14,6 +14,7 @@ Seu papel é identificar com clareza as intenções do usuário e chamar **uma d
 - register_transaction
 - update_transaction
 - cancel_transaction
+- update_recurring_transaction
 
 Regras de comportamento:
 
@@ -129,12 +130,17 @@ const TOOLS: OpenAI.Chat.ChatCompletionCreateParams['tools'] = [
           recorrente: {
             type: 'boolean',
             description:
-              'Indica se a transação se repete regularmente (ex: mensalmente). Se true, DEVE ser informado o campo "recorrencia".',
+              'Indica se a transação se repete regularmente (ex: mensalmente). Se true, DEVE ser informado o campo "frequencia" e "primeira_cobranca".',
           },
-          recorrencia: {
+          frequencia: {
             type: 'string',
             description: 'Frequência de recorrência da transação. Pode ser "diária", "semanal", "mensal" ou "anual".',
             enum: ['diária', 'semanal', 'mensal', 'anual'],
+          },
+          primeira_cobranca: {
+            type: 'string',
+            description:
+              'Data da primeira cobrança da transação recorrente. Deve ser no formato ISOString. Se o usuário não informar, use a hora atual. Se a data for no passado, coloque a data da próxima cobrança.',
           },
         },
         required: ['tipo', 'valor', 'categoria', 'data', 'descricao', 'recorrente'],
@@ -176,10 +182,6 @@ const TOOLS: OpenAI.Chat.ChatCompletionCreateParams['tools'] = [
             type: 'string',
             description: 'Nova descrição da transação.',
           },
-          recorrente: {
-            type: 'boolean',
-            description: 'Se a recorrência foi alterada, indique aqui.',
-          },
         },
         required: ['id'],
       },
@@ -202,6 +204,46 @@ const TOOLS: OpenAI.Chat.ChatCompletionCreateParams['tools'] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'update_recurring_transaction',
+      description:
+        'Atualiza uma transação recorrente existente do usuário. O ID deve estar disponível no histórico da conversa.',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'ID da transação recorrente a ser atualizada. Deve estar disponível no histórico da conversa.',
+          },
+          valor: {
+            type: 'number',
+            description: 'Valor atualizado da transação.',
+          },
+          categoria: {
+            type: 'string',
+            description: 'Categoria atualizada.',
+            enum: ['alimentação', 'transporte', 'moradia', 'saúde', 'lazer', 'outros'],
+          },
+          data: {
+            type: 'string',
+            description: 'Nova data da transação no formato ISO 8601, se for atualizada.',
+          },
+          descricao: {
+            type: 'string',
+            description: 'Nova descrição da transação.',
+          },
+          frequencia: {
+            type: 'string',
+            description: 'Frequência de recorrência da transação. Pode ser "diária", "semanal", "mensal" ou "anual".',
+            enum: ['diária', 'semanal', 'mensal', 'anual'],
+          },
+        },
+        required: ['id'],
+      },
+    },
+  },
 ];
 
 export default class TransactionsAgent {
@@ -215,8 +257,12 @@ export default class TransactionsAgent {
     const messageHistory = await Promise.all(
       this.messageHistory.map(async (message) => {
         if ((message.content as string).includes('Transação registrada! Confira os detalhes:')) {
-          const transactionId = (message.content as string).match(/ID: ([A-Z0-9]+)/)?.[1];
-          message.content = `Despesa de ID ${transactionId} registrada!`;
+          const transactionId = (message.content as string).match(/#([A-Z0-9]+)/)?.[1];
+          message.content = `Transação de ID ${transactionId} registrada!`;
+        }
+        if ((message.content as string).includes('Transação atualizada! Confira os detalhes:')) {
+          const transactionId = (message.content as string).match(/#([A-Z0-9]+)/)?.[1];
+          message.content = `Transação de ID ${transactionId} atualizada!`;
         }
         return message;
       }),
@@ -256,6 +302,16 @@ type Transaction = {
   data: string;
   descricao: string;
   recorrente: boolean;
+  frequencia?: string;
+  primeira_cobranca?: string;
+};
+
+const DAY_IN_MS = 1000 * 60 * 60 * 24;
+const frequencias = {
+  diária: DAY_IN_MS,
+  semanal: DAY_IN_MS * 7,
+  mensal: DAY_IN_MS * 30,
+  anual: DAY_IN_MS * 365,
 };
 
 export class TransactionsHandler extends FunctionHandler {
@@ -268,6 +324,8 @@ export class TransactionsHandler extends FunctionHandler {
         return this.registerTransaction(JSON.parse(functionCalled.arguments));
       case 'update_transaction':
         return this.updateTransaction(JSON.parse(functionCalled.arguments));
+      case 'update_recurring_transaction':
+        return this.updateRecurringTransaction(JSON.parse(functionCalled.arguments));
       case 'cancel_transaction':
         return this.cancelTransaction(JSON.parse(functionCalled.arguments).id);
       default:
@@ -276,7 +334,7 @@ export class TransactionsHandler extends FunctionHandler {
   }
   // HANDLERS
   async registerTransaction(transaction: Transaction) {
-    const { data: registeredTransaction } = await this.supabase
+    const { data: registeredTransaction, error } = await this.supabase
       .from('transactions')
       .insert({
         user_id: this.user!.id,
@@ -292,10 +350,11 @@ export class TransactionsHandler extends FunctionHandler {
       await this.sendMessage(
         'Não foi possível registrar a transação. Tente novamente mais tarde ou entre em contato com o suporte.',
       );
-      throw new Error('Failed to register transaction');
+      return console.error(error);
+      // throw new Error('Failed to register transaction');
     }
 
-    const beautifiedTransaction = this.beautifyTransaction(registeredTransaction);
+    const beautifiedTransaction = TransactionsHandler.beautifyTransaction(registeredTransaction);
     await this.sendMessage(beautifiedTransaction);
     // await this.waha.sendMessageWithButtons(
     //   beautifiedTransaction,
@@ -307,21 +366,67 @@ export class TransactionsHandler extends FunctionHandler {
   }
 
   async registerRecurringTransaction(transaction: Transaction) {
-    // const { data: registeredTransaction } = await this.supabase
-    //   .from('recurring_transactions')
-    //   .insert({
-    //     user_id: this.user!.id,
-    //     categoria: transaction.categoria,
-    //     valor: transaction.valor,
-    //     data: transaction.data,
-    //     descricao: transaction.descricao,
-    //   })
-    //   .select()
-    //   .single();
-    console.log('registerRecurringTransaction', transaction);
-    recurringTransactionQueue.enqueue(transaction, {
-      delay: 5000,
+    if (!transaction.frequencia) {
+      throw new Error('Frequência is required');
+    }
+    const { data: recurringTransaction, error } = await this.supabase
+      .from('recurring_transactions')
+      .insert({
+        user_id: this.user!.id,
+        categoria: transaction.categoria,
+        valor: transaction.valor,
+        descricao: transaction.descricao,
+        frequencia: transaction.frequencia,
+      })
+      .select()
+      .single();
+
+    if (!recurringTransaction) {
+      await this.sendMessage(
+        'Não foi possível registrar a transação recorrente. Tente novamente mais tarde ou entre em contato com o suporte.',
+      );
+      return console.error(error);
+    }
+
+    const firstChargeDate = TransactionsHandler.dataPrimeiraCobranca(
+      transaction.primeira_cobranca,
+      transaction.frequencia,
+    );
+
+    recurringTransactionQueue.enqueue(recurringTransaction, {
+      id: String(recurringTransaction.id),
+      runAt: firstChargeDate,
+      repeat: {
+        every: frequencias[transaction.frequencia as keyof typeof frequencias],
+      },
     });
+
+    await this.sendMessage(TransactionsHandler.beautifyRecurringTransaction(recurringTransaction));
+  }
+
+  async updateRecurringTransaction(transaction: Partial<Transaction>) {
+    if (!transaction.id) {
+      console.error('Transaction ID is required');
+      await this.sendMessage(
+        'Não foi possível atualizar a transação. Tente novamente mais tarde ou entre em contato com o suporte.',
+      );
+      return;
+    }
+    const { data: updatedTransaction, error } = await this.supabase
+      .from('recurring_transactions')
+      .update(transaction)
+      .eq('id', transaction.id)
+      .select()
+      .single();
+
+    if (!updatedTransaction) {
+      await this.sendMessage(
+        'Não foi possível atualizar a transação. Tente novamente mais tarde ou entre em contato com o suporte.',
+      );
+      return console.error(error);
+    }
+
+    await this.sendMessage(TransactionsHandler.beautifyRecurringTransaction(updatedTransaction, true));
   }
 
   async updateTransaction(transaction: Partial<Transaction>) {
@@ -329,7 +434,7 @@ export class TransactionsHandler extends FunctionHandler {
       throw new Error('Transaction ID is required');
     }
 
-    const { data: updatedTransaction } = await this.supabase
+    const { data: updatedTransaction, error } = await this.supabase
       .from('transactions')
       .update(transaction)
       .eq('id', transaction.id)
@@ -340,10 +445,10 @@ export class TransactionsHandler extends FunctionHandler {
       await this.sendMessage(
         'Não foi possível atualizar a transação. Tente novamente mais tarde ou entre em contato com o suporte.',
       );
-      throw new Error('Failed to update transaction');
+      return console.error(error);
     }
 
-    const beautifiedTransaction = this.beautifyTransaction(updatedTransaction, true);
+    const beautifiedTransaction = TransactionsHandler.beautifyTransaction(updatedTransaction, true);
     await this.sendMessage(beautifiedTransaction);
   }
 
@@ -354,22 +459,86 @@ export class TransactionsHandler extends FunctionHandler {
       await this.sendMessage(
         'Não foi possível cancelar a transação. Tente novamente mais tarde ou entre em contato com o suporte.',
       );
-      console.error(error);
-      throw new Error('Failed to cancel transaction');
+      return console.error(error);
     }
 
-    await this.sendMessage('Transação cancelada com sucesso!');
+    await this.sendMessage(`Transação #${id} cancelada com sucesso!`);
   }
 
-  beautifyTransaction(transaction: Partial<Transaction>, update = false) {
+  static beautifyTransaction(transaction: Partial<Transaction>, update = false) {
     return `
 Transação ${update ? 'atualizada' : 'registrada'}! Confira os detalhes:
 
-ID: ${transaction.id}
+*#${transaction.id}*
 Valor: *R$ ${transaction.valor?.toFixed(2)}*
 Categoria: *${capitalize(transaction.categoria)}*
 Data: ${new Date(transaction?.data || new Date()).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })}
 Descrição: ${capitalize(transaction.descricao)}
     `.trim();
+  }
+
+  static beautifyRecurringTransaction(transaction: Partial<Transaction>, update = false) {
+    const firstChargeDate = transaction.primeira_cobranca
+      ? new Date(transaction.primeira_cobranca).toLocaleString('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          dateStyle: 'short',
+          timeStyle: 'short',
+        })
+      : 'Agora';
+
+    return `
+Transação recorrente ${update ? 'atualizada' : 'registrada'}! Confira os detalhes:
+
+*#${transaction.id}*
+Valor: *R$ ${transaction.valor?.toFixed(2)}*
+Categoria: *${capitalize(transaction.categoria)}*
+Descrição: ${capitalize(transaction.descricao)}
+Frequência: *${capitalize(transaction.frequencia)}*
+Data da primeira cobrança: ${firstChargeDate}
+    `.trim();
+  }
+
+  static dataPrimeiraCobranca(date: string | undefined, frequencia: string) {
+    if (!date) {
+      return undefined;
+    }
+
+    // Se a frequência não for diária, coloca a hora pra 15h
+    const firstChargeDate = new Date(frequencia === 'diária' ? date : date.split('T')[0] + 'T15:00:00Z');
+
+    if (firstChargeDate > new Date()) {
+      return firstChargeDate;
+    }
+
+    // Se for um momento muito próximo (menos que 1min), retorna undefined
+    if (Math.abs(firstChargeDate.getTime() - new Date().getTime()) < 1000 * 60) {
+      return undefined;
+    }
+
+    // Aumenta pelo tempo de recorrência até achar uma data futura
+    while (firstChargeDate < new Date()) {
+      if (frequencia === 'diária' || frequencia === 'semanal') {
+        firstChargeDate.setTime(firstChargeDate.getTime() + frequencias[frequencia as keyof typeof frequencias]);
+      } else if (frequencia === 'mensal') {
+        firstChargeDate.setMonth(firstChargeDate.getMonth() + 1);
+      } else if (frequencia === 'anual') {
+        firstChargeDate.setFullYear(firstChargeDate.getFullYear() + 1);
+      }
+    }
+
+    return firstChargeDate;
+  }
+
+  static dataProximaCobranca(date: string, frequencia: string) {
+    const firstChargeDate = new Date(date);
+    if (frequencia === 'diária' || frequencia === 'semanal') {
+      firstChargeDate.setTime(firstChargeDate.getTime() + frequencias[frequencia as keyof typeof frequencias]);
+    } else if (frequencia === 'mensal') {
+      firstChargeDate.setMonth(firstChargeDate.getMonth() + 1);
+    } else if (frequencia === 'anual') {
+      firstChargeDate.setFullYear(firstChargeDate.getFullYear() + 1);
+    }
+
+    return firstChargeDate;
   }
 }

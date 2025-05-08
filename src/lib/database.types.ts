@@ -35,32 +35,35 @@ export type Database = {
           },
         ];
       };
-      recurrent_transactions: {
+      recurring_transactions: {
         Row: {
           categoria: string;
           created_at: string;
           descricao: string;
-          id: number;
+          frequencia: string;
+          id: string;
           subcategorias: string[] | null;
-          user_id: string | null;
+          user_id: string;
           valor: number;
         };
         Insert: {
           categoria: string;
           created_at?: string;
           descricao: string;
-          id?: number;
+          frequencia: string;
+          id?: string;
           subcategorias?: string[] | null;
-          user_id?: string | null;
+          user_id: string;
           valor: number;
         };
         Update: {
           categoria?: string;
           created_at?: string;
           descricao?: string;
-          id?: number;
+          frequencia?: string;
+          id?: string;
           subcategorias?: string[] | null;
-          user_id?: string | null;
+          user_id?: string;
           valor?: number;
         };
         Relationships: [
@@ -80,7 +83,7 @@ export type Database = {
           data: string;
           descricao: string;
           id: string;
-          recurrent_transaction_id: number | null;
+          recurring_transaction_id: string | null;
           user_id: string;
           valor: number;
         };
@@ -90,7 +93,7 @@ export type Database = {
           data: string;
           descricao: string;
           id?: string;
-          recurrent_transaction_id?: number | null;
+          recurring_transaction_id?: string | null;
           user_id: string;
           valor: number;
         };
@@ -100,16 +103,16 @@ export type Database = {
           data?: string;
           descricao?: string;
           id?: string;
-          recurrent_transaction_id?: number | null;
+          recurring_transaction_id?: string | null;
           user_id?: string;
           valor?: number;
         };
         Relationships: [
           {
-            foreignKeyName: 'transactions_recurrent_transaction_id_fkey';
-            columns: ['recurrent_transaction_id'];
+            foreignKeyName: 'transactions_recurring_transaction_id_fkey';
+            columns: ['recurring_transaction_id'];
             isOneToOne: false;
-            referencedRelation: 'recurrent_transactions';
+            referencedRelation: 'recurring_transactions';
             referencedColumns: ['id'];
           },
           {
@@ -153,7 +156,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      gerar_id_unico_transactions: {
+        Args: Record<PropertyKey, never>;
+        Returns: string;
+      };
     };
     Enums: {
       [_ in never]: never;
