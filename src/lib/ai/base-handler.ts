@@ -33,6 +33,6 @@ export default class FunctionHandler {
   }
 
   async sendMessage(message: string) {
-    return this.waha.sendMessageWithTyping(this.payload.id, this.payload.from, message);
+    return this.waha.sendMessageWithTyping(this.payload.id, this.payload.from, message.trim());
   }
 }

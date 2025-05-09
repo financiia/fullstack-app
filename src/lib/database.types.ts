@@ -129,6 +129,7 @@ export type Database = {
           created_at: string;
           id: string;
           nickname: string | null;
+          previous_response_id: string | null;
           stripe_active_subscription_id: string | null;
           stripe_customer_id: string | null;
           whatsapp_phone: string | null;
@@ -137,6 +138,7 @@ export type Database = {
           created_at?: string;
           id: string;
           nickname?: string | null;
+          previous_response_id?: string | null;
           stripe_active_subscription_id?: string | null;
           stripe_customer_id?: string | null;
           whatsapp_phone?: string | null;
@@ -145,6 +147,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           nickname?: string | null;
+          previous_response_id?: string | null;
           stripe_active_subscription_id?: string | null;
           stripe_customer_id?: string | null;
           whatsapp_phone?: string | null;

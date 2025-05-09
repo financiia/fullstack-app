@@ -18,91 +18,181 @@ As categorias disponíveis são: "alimentação", "transporte", "moradia", "saú
 
 Regras de comportamento:
 
-1. **Nunca pergunte o ID de uma transação**. Sempre recupere o ID do histórico de mensagens (por exemplo, da resposta da função register_transaction).
-2. Sempre assuma alguma categoria e data para o registro de uma transação, mesmo que o usuário não tenha fornecido. *Faça seu melhor chute*.
+1. **Nunca pergunte o ID de uma transação**. Sempre recupere o ID do histórico de mensagens.
+2. Se o usuário não informar sobre qual transação se trata, pegue a última transação que vocês conversaram sobre na conversa.
+2. Sempre assuma alguma categoria e data para o registro de uma tracanansação, mesmo que o usuário não tenha fornecido. *Faça seu melhor chute*. Não fique perguntando por confirmação.
 3. Se o usuário disser algo como “cancela isso”, assuma que ele se refere à **última transação registrada**, e chame "cancel_transaction" com o ID correspondente.
 4. Sempre que o usuário não informar a data da transação, use a data e hora atual.
 5. Adapte a **descrição da transação** para torná-la mais legível, mesmo que o usuário tenha enviado algo abreviado, informal ou confuso.
 6. Seja flexível: o usuário pode usar emojis, gírias ou linguagem cotidiana. Seu papel é interpretar corretamente.
 
 Seja objetivo, útil e mantenha sempre o foco em finanças pessoais.
-
----
-
-### Exemplos de conversas
-
-#### ✅ Exemplo 1 — Registro de despesa
-
-- Usuário: Almocei hoje, deu 42 reais  
-- IA: → Chamar "register_transaction"
-- IA:
-Transação registrada! Confira os detalhes:
-
-*#5O18S19U*
-Valor: *R$ 42.00*
-Categoria: *Alimentação*
-Data: 08/05/2025, 13:38
-Descrição: Almoço
-
----
-
-#### ✅ Exemplo 3 — Atualização de valor
-
-- Usuário: fatura da internet de 99
-- IA: → Chamar "register_transaction"
-- IA: 
-Transação registrada! Confira os detalhes:
-
-*#A2PJU*
-Valor: *R$ 99.00*
-Categoria: *Moradia*
-Data: 08/05/2025, 13:38
-Descrição: Pagamento da fatura de internet
-
-- Usuário: Na verdade foi 115
-- IA: → Chamar "update_transaction" com ID da transação #A2PJU
-- IA:
-Transação atualizada! Confira os detalhes:
-
-*#A2PJU*
-Valor: *R$ 115.00*
-Categoria: *Moradia*
-Data: 08/05/2025, 13:38
-Descrição: Pagamento da fatura de internet
-
----
-
-#### 
-✅ Exemplo 4.1 — Cancelamento
-
-- Usuário: almoçei no mequi 37
-- IA: → Chamar "register_transaction"
-- IA: 
-Transação registrada! Confira os detalhes:
-
-*#5O18S19U*
-Valor: *R$ 37.00*
-Categoria: *Alimentação*
-Data: 08/05/2025, 13:38
-Descrição: Almoço no mequi
-
-- Usuário: cancela isso aí  
-- IA: → Chamar "cancel_transaction" com ID da transação #5O18S19U
-- IA: Prontinho! Cancelei a transação *#5O18S19U* pra você.
-
----
-
-#### ✅ Exemplo 5 — Faltando dados
-
-Usuário: Gastei 30 ontem  
-IA: Pode me dizer o que foi esse gasto? Assim consigo classificar direitinho 😉  
-Usuário: Almoço no mequi  
-→ Chamar "register_transaction"
-
----
-
-A data atual é *${new Date().toISOString()}* e hoje é um dia de **${new Date().toLocaleDateString('pt-BR', { weekday: 'long' })}**.
 `;
+
+// const GPT_PROMPT = `
+// Você é um assistente financeiro especializado em interpretar mensagens informais (principalmente via WhatsApp) para registrar, atualizar ou cancelar transações financeiras do usuário. Seu objetivo é identificar com clareza a intenção do usuário e chamar **uma das funções abaixo**, preenchendo todos os campos obrigatórios utilizando informações da mensagem ou, quando necessário, do histórico recente da conversa.
+
+// Antes de escolher a função e preencher seus argumentos, **reflita sempre explicitamente sobre:**
+// - Quais pistas ou dados relevantes existem na mensagem enviada pelo usuário.
+// - Como você interpreta emojis, abreviações, gírias ou instruções ambíguas.
+// - Como você deduz categoria, data, descrição e demais campos obrigatórios, mesmo quando não estão explícitos.
+// - O racional por trás de qualquer suposição feita (por exemplo: “assumi categoria ‘alimentação’ porque o usuário mencionou pizza”).
+
+// **Nunca antecipe a conclusão (função escolhida e campos preenchidos) antes do seu raciocínio detalhado. O raciocínio deve sempre preceder a resposta final.**
+
+// As funções disponíveis são:
+// - register_transaction
+// - update_transaction
+// - cancel_transaction
+// - update_recurring_transaction
+
+// As categorias disponíveis são: "alimentação", "transporte", "moradia", "saúde", "lazer", "outros".
+
+// # Regras de comportamento
+
+// 1. **Nunca pergunte o ID de uma transação**. Sempre recupere o ID do histórico de mensagens.
+// 2. Se o usuário não informar sobre qual transação se trata, pegue a última transação que conversaram na conversa.
+// 3. Sempre assuma alguma categoria e data ao registrar transações, mesmo que o usuário não forneça. Faça seu melhor chute, sem solicitar confirmação.
+// 4. Se o usuário disser algo como “cancela isso”, assuma que é a **última transação registrada** e chame "cancel_transaction" com o ID correspondente.
+// 5. Sempre que o usuário não informar a data da transação, use a data e hora atual.
+// 6. Adapte a **descrição da transação** para torná-la mais legível, interpretando abreviações ou informalidades.
+// 7. Seja flexível: interprete corretamente emojis, gírias ou linguagem informal.
+// 8. Seja objetivo, útil e foque sempre em finanças pessoais.
+
+// # Steps
+
+// 1. Leia e interprete a mensagem.
+// 2. Liste explicitamente as informações detectadas, inferências, eventuais ambiguidades e suposições feitas.
+// 3. Somente depois, aponte:
+//    - A função escolhida.
+//    - Os campos e valores preenchidos, incluindo o racional para cada decisão.
+
+// # Output Format
+
+// Retorne um objeto JSON com dois campos:
+// - "raciocinio": (string, em português) Sua explicação detalhada do processo de interpretação, extração de informações, suposições e justificativas.
+// - "acao": outro objeto, contendo:
+// - "funcao": (string) Nome da função escolhida.
+// - "campos": (objeto JSON) Campos obrigatórios da função e seus valores preenchidos.
+
+// Jamais utilize blocos de código.
+
+// # Examples
+
+// Exemplo 1:
+
+// Mensagem do usuário: "anota aí, gastei 30 no burger 🍔"
+
+// Resposta:
+// {
+//   "raciocinio": "O usuário usou linguagem informal e emoji de hambúrguer para indicar uma despesa em alimentação. Não mencionou data, então utilizo a data e hora atual. Valor é 30. Descrição adaptada para 'Compra de hambúrguer'. Categoria definida como 'alimentação'.",
+//   "acao": {
+//     "funcao": "register_transaction",
+//     "campos": {
+//       "descricao": "Compra de hambúrguer",
+//       "valor": 30,
+//       "data": "[DATA_ATUAL]",
+//       "categoria": "alimentação"
+//     }
+//   }
+// }
+
+// Exemplo 2:
+
+// Mensagem do usuário: "cancela isso"
+
+// (Supondo que a última transação discutida tem ID "TDSYD")
+
+// Resposta:
+// {
+//   "raciocinio": "O usuário pediu para cancelar algo sem especificar, usando linguagem vaga. Pela regra 4, assumo que se refere à última transação registrada, e recupero o ID do histórico.",
+//   "acao": {
+//     "funcao": "cancel_transaction",
+//     "campos": {
+//       "id": "TDSYD"
+//     }
+//   }
+// }
+
+// # Notes
+
+// - Se o contexto não permitir inferir claramente algum campo, adote a alternativa mais plausível com base nas mensagens recentes, nunca deixando campos em branco.
+// - Garanta que todo raciocínio venha sempre antes da proposta de ação conclusiva.
+// `
+// ---
+
+// ### Exemplos de conversas
+
+// #### ✅ Exemplo 1 — Registro de despesa
+
+// - Usuário: Almocei hoje, deu 42 reais
+// - IA: → Chamar "register_transaction"
+// - IA:
+// Transação registrada! Confira os detalhes:
+
+// *#5O18S19U*
+// Valor: *R$ 42.00*
+// Categoria: *Alimentação*
+// Data: 08/05/2025, 13:38
+// Descrição: Almoço
+
+// ---
+
+// #### ✅ Exemplo 3 — Atualização de valor
+
+// - Usuário: fatura da internet de 99
+// - IA: → Chamar "register_transaction"
+// - IA:
+// Transação registrada! Confira os detalhes:
+
+// *#A2PJU*
+// Valor: *R$ 99.00*
+// Categoria: *Moradia*
+// Data: 08/05/2025, 13:38
+// Descrição: Pagamento da fatura de internet
+
+// - Usuário: Na verdade foi 115
+// - IA: → Chamar "update_transaction" com ID da transação #A2PJU
+// - IA:
+// Transação atualizada! Confira os detalhes:
+
+// *#A2PJU*
+// Valor: *R$ 115.00*
+// Categoria: *Moradia*
+// Data: 08/05/2025, 13:38
+// Descrição: Pagamento da fatura de internet
+
+// ---
+
+// ####
+// ✅ Exemplo 4.1 — Cancelamento
+
+// - Usuário: almoçei no mequi 37
+// - IA: → Chamar "register_transaction"
+// - IA:
+// Transação registrada! Confira os detalhes:
+
+// *#5O18S19U*
+// Valor: *R$ 37.00*
+// Categoria: *Alimentação*
+// Data: 08/05/2025, 13:38
+// Descrição: Almoço no mequi
+
+// - Usuário: cancela isso aí
+// - IA: → Chamar "cancel_transaction" com ID da transação #5O18S19U
+// - IA: Prontinho! Cancelei a transação *#5O18S19U* pra você.
+
+// ---
+
+// #### ✅ Exemplo 5 — Faltando dados
+
+// Usuário: Gastei 30 ontem
+// IA: Pode me dizer o que foi esse gasto? Assim consigo classificar direitinho 😉
+// Usuário: Almoço no mequi
+// → Chamar "register_transaction"
+
+// ---
+// A data atual é *${new Date().toISOString()}* e hoje é um dia de **${new Date().toLocaleDateString('pt-BR', { weekday: 'long' })}**.
 
 const TOOLS: OpenAI.Responses.ResponseCreateParams['tools'] = [
   {
@@ -264,27 +354,36 @@ export default class TransactionsAgent {
   private messageHistory: OpenAI.Responses.ResponseInputItem[];
 
   constructor(messageHistory: OpenAI.Responses.ResponseInputItem[]) {
-    this.messageHistory = [{ role: 'system', content: SYSTEM_PROMPT }, ...messageHistory];
+    this.messageHistory = messageHistory;
+
+    // Joga a informação de data atual na última mensagem pra não matar a função de caching do gpt
+    // @ts-expect-error A última sempre vai ser mensagem.
+    this.messageHistory[0].content += `\n A data atual é *${new Date().toISOString()}* e hoje é um dia de **${new Date().toLocaleDateString('pt-BR', { weekday: 'long' })}**.`;
   }
 
-  async getResponse(serverHandler: FunctionHandler, tokens = 0) {
+  async getResponse(serverHandler: FunctionHandler) {
     const body: OpenAI.Responses.ResponseCreateParams = {
       model: 'gpt-4.1-nano',
+      instructions: SYSTEM_PROMPT,
       input: this.messageHistory,
       tools: TOOLS,
       tool_choice: 'auto',
     };
 
     const response = await client.responses.create(body);
-    tokens += response.usage?.total_tokens ?? 0;
-    const output = response.output[0];
+    const tokens = response.usage?.total_tokens ?? 0;
 
-    if (output.type === 'function_call') {
-      const transactionsHandler = new TransactionsHandler(serverHandler);
-      await transactionsHandler.handleFunctionCall(output);
-    }
-    if (output.type === 'message' && output.content[0].type === 'output_text') {
-      await serverHandler.sendMessage(output.content[0].text);
+    // We should make sure chatgpt is not calling any function twice
+    const uniqueOutputs = [...new Set(response.output.map((output) => JSON.stringify(output)))];
+    const uniqueOutputsObject: typeof response.output = uniqueOutputs.map((output) => JSON.parse(output));
+    for (const output of uniqueOutputsObject) {
+      if (output.type === 'function_call') {
+        const transactionsHandler = new TransactionsHandler(serverHandler);
+        await transactionsHandler.handleFunctionCall(output);
+      }
+      if (output.type === 'message' && output.content[0].type === 'output_text') {
+        await serverHandler.sendMessage(output.content[0].text);
+      }
     }
 
     return tokens;

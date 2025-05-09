@@ -6,7 +6,7 @@ import Stripe from 'stripe';
 import { Database } from '@/lib/database.types';
 import { createClient as createSupabaseClient } from '@/utils/supabase/server-internal';
 import UnregisteredAgent from '@/lib/ai/unregistered';
-import BaseAgent from '@/lib/ai/base';
+import DelegatorAgent from '@/lib/ai/delegator';
 import { createCheckoutSession } from '@/utils/stripe/server';
 import OpenAI from 'openai';
 import FunctionHandler from '@/lib/ai/base-handler';
@@ -152,6 +152,26 @@ Espero poder te ajudar no futuro!
       return Response.json({ status: 200, message: 'Webhook received' });
     }
 
+    // Subscribe to presence
+    await this.waha.subscribeToPresence(from);
+
+    // Sempre aguarda 5 segundos antes de processar, pra ver se o usuário vai mandar mais mensagens.
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    while (await this.waha.isUserTyping(from)) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+    // Verifica se essa ainda é a última mensagem do usuário.
+    const messageHistory: (typeof this.payload)[] = await this.waha.getMessages(from);
+    // Sort descending
+    messageHistory.sort((a, b) => b.timestamp - a.timestamp);
+
+    if (messageHistory[0]?.id !== id) {
+      return Response.json({
+        status: 200,
+        message: 'Webhook received. No action taken because the user sent another message.',
+      });
+    }
+
     // Handle audio messages
     let processedMessage = message;
     if (hasMedia && media.mimetype.startsWith('audio/')) {
@@ -171,22 +191,35 @@ Espero poder te ajudar no futuro!
       return this.handleUnregisteredUser(id, from);
     }
 
-    let messageHistory: (typeof this.payload)[] = await this.waha.getMessages(from);
-    messageHistory.sort((a, b) => a.timestamp - b.timestamp);
-    messageHistory = messageHistory.slice(-10); // Só as últimas 10 mensagens
-    messageHistory[messageHistory.length - 1].body = processedMessage; // Caso seja áudio.
+    // Vamos pegar a janela de contexto da conversa atual apenas. Mensagens antigas não entram.
+    const currentTimestamp = new Date().getTime();
+    const contextWindow = [];
 
-    const messageHistoryGPT: OpenAI.Responses.ResponseInputItem[] = messageHistory.map(
-      (message: typeof this.payload) => {
-        const output: OpenAI.Responses.ResponseInputItem = {
-          role: message.fromMe ? 'assistant' : 'user',
-          content: message.body,
-        };
-        return output;
-      },
-    );
+    const maxMessageAge = 60; // 15 minutos
+    let lastMessage = { timestamp: currentTimestamp / 1000 };
+    for (const message of messageHistory) {
+      if (Math.abs(message.timestamp - lastMessage.timestamp) > maxMessageAge) break;
 
-    const baseAgent = new BaseAgent(messageHistoryGPT);
+      contextWindow.push(message);
+      lastMessage = message;
+    }
+    // messageHistory = messageHistory.slice(-10); // Só as últimas 10 mensagens
+    if (contextWindow.length > 0) {
+      contextWindow[0].body = processedMessage; // Caso seja áudio.
+    }
+
+    // Agora coloca a lista na ordem correta.
+    contextWindow.reverse();
+
+    const messageHistoryGPT = contextWindow.map((message: typeof this.payload) => {
+      const output = {
+        role: message.fromMe ? 'assistant' : 'user',
+        content: message.body,
+      };
+      return output;
+    });
+
+    const baseAgent = new DelegatorAgent(messageHistoryGPT as OpenAI.Responses.ResponseInputItem[]);
     const serverHandler = new FunctionHandler(this.payload, this.user!, this.supabase, this.stripe, this.waha);
     const tokens = await baseAgent.getResponse(serverHandler);
     this.logger(`Total de tokens gastos: ${tokens}`);
