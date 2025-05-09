@@ -1,6 +1,6 @@
 // const WAHA_BASE_URL = 'https://waha.acan.credit/api';
-const WAHA_BASE_URL = 'http://localhost:3001/api';
-const WAHA_API_KEY = '5BP#r*WSR77blS';
+const WAHA_BASE_URL = process.env.WAHA_BASE_URL;
+const WAHA_API_KEY = process.env.WAHA_API_KEY;
 
 export default class Waha {
   constructor() {}

@@ -1,4 +1,9 @@
 services:
+  # quirrel:
+  #   image: quirrel/quirrel:latest
+  #   ports:
+  #     - 28778:28778
+
   waha:
     image: seqqal/waha-plus:latest
     volumes:

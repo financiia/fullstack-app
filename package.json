@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "concurrently 'next dev' 'quirrel'",
+    "dev:windows": "next dev",
     "build": "npx prisma db pull && npx prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
@@ -14,7 +15,6 @@
     "prettier": "prettier --write --ignore-unknown .",
     "prettier:check": "prettier --check --ignore-unknown .",
     "lint-staged": "lint-staged",
-    "prisma:generate": "prisma db pull && prisma generate && next build",
     "supabase:generate": "supabase gen types typescript --project-id vlbmuhkmplmhtkuwgolu > src/lib/database.types.ts"
   },
   "git": {

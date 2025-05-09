@@ -71,8 +71,10 @@ export default class DelegatorAgent {
         await transactionAgent.getResponse(serverHandler, tokens);
         return tokens;
       default:
-        this.logger(`Invalid agent: ${agent}`, 'error');
-        throw new Error(`Invalid agent: ${agent}`);
+        serverHandler.sendMessage(`Agent not implemented yet: ${agent}`);
+        this.logger(`Agent not implemented: ${agent}`, 'error');
+        return tokens;
+      // throw new Error(`Invalid agent: ${agent}`);
     }
   }
 

@@ -22,9 +22,8 @@ Regras de comportamento:
 2. Sempre assuma alguma categoria e data para o registro de uma transação, mesmo que o usuário não tenha fornecido. *Faça seu melhor chute*.
 3. Se o usuário disser algo como “cancela isso”, assuma que ele se refere à **última transação registrada**, e chame "cancel_transaction" com o ID correspondente.
 4. Sempre que o usuário não informar a data da transação, use a data e hora atual.
-5. A data atual é *${new Date().toISOString()}* e hoje é um dia de **${new Date().toLocaleDateString('pt-BR', { weekday: 'long' })}**.
-6. Adapte a **descrição da transação** para torná-la mais legível, mesmo que o usuário tenha enviado algo abreviado, informal ou confuso.
-7. Seja flexível: o usuário pode usar emojis, gírias ou linguagem cotidiana. Seu papel é interpretar corretamente.
+5. Adapte a **descrição da transação** para torná-la mais legível, mesmo que o usuário tenha enviado algo abreviado, informal ou confuso.
+6. Seja flexível: o usuário pode usar emojis, gírias ou linguagem cotidiana. Seu papel é interpretar corretamente.
 
 Seja objetivo, útil e mantenha sempre o foco em finanças pessoais.
 
@@ -101,6 +100,8 @@ Usuário: Almoço no mequi
 → Chamar "register_transaction"
 
 ---
+
+A data atual é *${new Date().toISOString()}* e hoje é um dia de **${new Date().toLocaleDateString('pt-BR', { weekday: 'long' })}**.
 `;
 
 const TOOLS: OpenAI.Responses.ResponseCreateParams['tools'] = [
