@@ -120,4 +120,19 @@ export default class Waha {
     });
     return response.json();
   }
+
+  async isUserTyping(phone: string) {
+    const response = await fetch(`${WAHA_BASE_URL}/Financiia/presence/${phone}`, {
+      headers: { 'X-API-KEY': `${WAHA_API_KEY}` },
+      method: 'GET',
+    });
+    return response.json().then((res) => res.presence === 'typing' || res.presence === 'recording');
+  }
+
+  async subscribeToPresence(phone: string) {
+    return fetch(`${WAHA_BASE_URL}/Financiia/presence/${phone}/subscribe`, {
+      headers: { 'X-API-KEY': `${WAHA_API_KEY}` },
+      method: 'POST',
+    });
+  }
 }
