@@ -1,363 +1,346 @@
-import { capitalize } from 'lodash';
 import OpenAI from 'openai';
 import FunctionHandler from './base-handler';
-
-const GEMINI_API_KEY = 'AIzaSyDYapw143aCD_Lq8a0FWwjlJS7f_nArEYQ';
+import { cloneDeep } from 'lodash';
+// import { groupBy } from 'lodash';
+// import { Database } from '../database.types';
+// import { capitalize } from 'lodash';
 
 // 🧠 Prompt do agente para usuário não registrado:
 const SYSTEM_PROMPT = `
-Você é um assistente financeiro responsável por gerenciar metas mensais de gasto do usuário.
+Você é uma assistente de IA de organização financeira chamada Marill.IA especializada em ajudar com limites de gastos mensais (metas financeiras). Você ajuda o usuário a definir, atualizar e acompanhar seus tetos de gastos de forma amigável e objetiva.
 
-Seu trabalho é entender mensagens informais e identificar com clareza quando o usuário deseja criar, atualizar ou cancelar uma meta de gasto para uma categoria específica.
+Seu papel é:
+- Ajudar o usuário a definir limites mensais realistas para suas despesas
+- Configurar tetos de gastos por categoria (ex: alimentação, transporte) ou global
+- Atualizar limites existentes quando solicitado
+- Remover limites que não são mais relevantes
+- Mostrar os limites atuais e como estão sendo cumpridos
 
-Você deve sempre chamar **uma das funções abaixo**, preenchendo todos os campos necessários com base na mensagem ou no histórico recente da conversa:
+Você pode responder perguntas como:
+- "Quais são meus limites de gastos atuais?"
+- "Quero definir um limite de 800 reais pra alimentação"
+- "Preciso aumentar meu teto de gastos com transporte"
+- "Pode remover o limite da categoria lazer?"
+- "Quero estabelecer um limite total de 3 mil por mês"
 
-- upsert_goal
-- cancel_goal
-- create_category
-- rename_category
-- delete_category
+Quando o usuário quiser criar ou atualizar um limite, certifique-se de coletar:
+- Se é um limite global ou por categoria específica
+- Valor máximo mensal permitido
+- Observações ou regras especiais (opcional)
 
-As categories atualmente cadastradas para esse usuário são:
-- Carro
-- Gasolina
-- Gastos fixos
-- Alimentação
-- Lazer
-- Transporte
-- Saúde
-- Comer fora
-- Pets
-- Outros
+### Exemplos de conversa
 
-Regras de comportamento:
-
-1. Antes de realizar qualquer **update**, envie uma **mensagem de confirmação clara e objetiva**, como: "Certo! Vou atualizar sua meta da categoria alimentação para R$ 600,00. Confirma?"
-2. Os valores devem sempre ser tratados como números (sem o símbolo "R$").
-3. As categorias são definidas pelo próprio usuário. Se ele mencionar uma categoria nova, você deve chamá-la de forma padronizada (ex: tudo minúsculo) e criar automaticamente com \`create_category\`, caso necessário.
-4. Se o usuário quiser mudar o nome de uma categoria ou deletar uma categoria existente, use \`rename_category\` ou \`delete_category\`.
-5. Se faltar algum dado importante (ex: valor da meta), pergunte de forma direta e breve.
-6. Use linguagem clara, simples e objetiva, mantendo sempre o foco em ajudar o usuário a controlar seus gastos por categoria.
+Usuário: quais são meus limites de gastos?
+Você: Vou buscar todos os seus tetos de gastos configurados.
+-> chama a função get_all_goals
 
 ---
-
-### Exemplos de conversas
-
-#### ✅ Exemplo 1 — Registro de meta
-
-**Usuário:** quero gastar no máximo 500 com alimentação esse mês  
-**IA:** Entendido! Vou registrar uma meta de R$ 500,00 para a categoria "alimentação" neste mês.  
-→ Chamar \`upsert_goal\`
+Usuário: quero definir um limite de 500 reais pra alimentação
+Você: Ótimo! Vou configurar esse teto de gastos para a categoria alimentação.
+-> chama a função upsert_goal com os dados fornecidos
 
 ---
-
-#### ✅ Exemplo 2 — Atualização de valor
-
-**Usuário:** pode aumentar pra 600  
-**IA:** Ok! Atualizando sua meta da categoria "alimentação" para R$ 600,00.  
-→ Chamar \`upsert_goal\`
+Usuário: preciso aumentar meu limite mensal total pra 3500
+Você: Certo! Vou atualizar seu teto de gastos global para R$ 3.500 por mês.
+-> chama a função upsert_goal com os dados atualizados
 
 ---
+Usuário: quero remover o limite da categoria lazer
+Você: Tem certeza que quer remover o limite de gastos da categoria lazer? Essa ação não pode ser desfeita.
+Usuário: sim, pode remover
+Você: Ok, vou remover esse limite agora.
+-> chama a função delete_goal
 
-#### ✅ Exemplo 3 — Cancelamento de meta
+Mantenha um tom amigável e encorajador, mas também realista. Se o usuário definir limites muito baixos ou irrealistas para seu padrão de gastos, sugira gentilmente ajustes mais realistas baseados no histórico.
 
-**Usuário:** cancela essa meta de lazer  
-**IA:** Tudo bem, cancelando a meta da categoria "lazer".  
-→ Chamar \`cancel_goal\`
-
----
-
-#### ✅ Exemplo 4 — Nova categoria
-
-**Usuário:** quero gastar até 300 com pets  
-**IA:** Ótimo! Criando a categoria "pets" e registrando a meta de R$ 300,00.  
-→ Chamar \`create_category\` → depois \`register_goal\`
-
----
-
-#### ✅ Exemplo 5 — Renomear categoria
-
-**Usuário:** troca "carro" por "transporte"  
-**IA:** Claro! Renomeando a categoria "carro" para "transporte".  
-→ Chamar \`rename_category\`
-
----
+Evite sair do escopo de limites de gastos. Se o usuário perguntar sobre outros temas financeiros, explique que você é especializada em gerenciar tetos de gastos e sugira que ele converse com o assistente principal para outros assuntos.
 `;
 
-const TOOLS: OpenAI.Chat.ChatCompletionCreateParams['tools'] = [
+const TOOLS: OpenAI.Responses.ResponseCreateParams['tools'] = [
   {
     type: 'function',
-    function: {
-      name: 'register_goal',
-      description: 'Registra uma nova meta de gasto para uma categoria no mês especificado (ou mês atual)',
-      parameters: {
-        type: 'object',
-        properties: {
-          categoria: {
-            type: 'string',
-            description: 'Nome da categoria da meta, como "alimentação", "lazer", etc.',
-          },
-          valor: {
-            type: 'number',
-            description: 'Valor máximo permitido de gasto para a categoria (em reais, sem símbolo)',
-          },
-          mes: {
-            type: 'string',
-            description: 'Mês da meta no formato ISO (ex: "2025-05-01"). Se não for informado, usar o mês atual.',
-          },
-        },
-        required: ['categoria', 'valor'],
-      },
-    },
+    name: 'get_all_goals',
+    description: 'Retorna todas as metas do usuário',
+    parameters: { type: 'object', properties: {}, additionalProperties: false, required: [] },
+    strict: true,
   },
   {
     type: 'function',
-    function: {
-      name: 'update_goal',
-      description: 'Atualiza o valor de uma meta existente para uma categoria',
-      parameters: {
-        type: 'object',
-        properties: {
-          categoria: {
-            type: 'string',
-            description: 'Nome da categoria da meta que será atualizada',
-          },
-          novo_valor: {
-            type: 'number',
-            description: 'Novo valor da meta (em reais)',
-          },
-          mes: {
-            type: 'string',
-            description: 'Mês da meta no formato ISO (opcional — se não informado, assume mês atual)',
-          },
+    name: 'upsert_goal',
+    description: 'Atualiza ou cria uma meta do usuário',
+    parameters: {
+      type: 'object',
+      properties: {
+        categoria: {
+          type: 'string',
+          description: 'Categoria da meta',
+          enum: ['global', 'alimentação', 'transporte', 'moradia', 'saúde', 'lazer', 'outros'],
         },
-        required: ['categoria', 'novo_valor'],
+        meta: { type: 'number', description: 'Valor limite estipulado pelo usuário' },
       },
+      additionalProperties: false,
+      required: ['categoria', 'meta'],
     },
+    strict: true,
   },
   {
     type: 'function',
-    function: {
-      name: 'cancel_goal',
-      description: 'Cancela uma meta de gasto para uma categoria',
-      parameters: {
-        type: 'object',
-        properties: {
-          categoria: {
-            type: 'string',
-            description: 'Nome da categoria cuja meta será cancelada',
-          },
-          mes: {
-            type: 'string',
-            description: 'Mês da meta no formato ISO (opcional — se não informado, assume mês atual)',
-          },
+    name: 'delete_goal',
+    description: 'Deleta uma meta do usuário',
+    parameters: {
+      type: 'object',
+      properties: {
+        categoria: {
+          type: 'string',
+          description: 'Categoria da meta',
+          enum: ['global', 'alimentação', 'transporte', 'moradia', 'saúde', 'lazer', 'outros'],
         },
-        required: ['categoria'],
       },
+      additionalProperties: false,
+      required: ['categoria'],
     },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'create_category',
-      description: 'Cria uma nova categoria personalizada para o usuário',
-      parameters: {
-        type: 'object',
-        properties: {
-          nome: {
-            type: 'string',
-            description: 'Nome da nova categoria, como "pets", "faculdade", etc.',
-          },
-        },
-        required: ['nome'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'rename_category',
-      description: 'Renomeia uma categoria existente para um novo nome',
-      parameters: {
-        type: 'object',
-        properties: {
-          antigo_nome: {
-            type: 'string',
-            description: 'Nome atual da categoria',
-          },
-          novo_nome: {
-            type: 'string',
-            description: 'Novo nome desejado para a categoria',
-          },
-        },
-        required: ['antigo_nome', 'novo_nome'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'delete_category',
-      description: 'Deleta uma categoria personalizada (e todas as metas associadas, se houver)',
-      parameters: {
-        type: 'object',
-        properties: {
-          nome: {
-            type: 'string',
-            description: 'Nome da categoria a ser removida',
-          },
-        },
-        required: ['nome'],
-      },
-    },
+    strict: true,
   },
 ];
 
-export default class GoalsAgent {
-  private messageHistory: OpenAI.Chat.ChatCompletionMessageParam[];
+const client = new OpenAI({
+  apiKey: process.env.OPEN_AI_API_KEY,
+});
 
-  constructor(messageHistory: OpenAI.Chat.ChatCompletionMessageParam[]) {
+export default class GoalsAgent {
+  private messageHistory: OpenAI.Responses.ResponseInput;
+  should_reset = false;
+
+  constructor(messageHistory: OpenAI.Responses.ResponseInput) {
     this.messageHistory = messageHistory;
+
+    // Joga a informação de data atual na última mensagem pra não matar a função de caching do gpt
+    this.messageHistory.push({
+      role: 'developer',
+      content: `A data atual é *${new Date().toISOString()}* e hoje é um dia de **${new Date().toLocaleDateString('pt-BR', { weekday: 'long' })}**.`,
+    });
+
+    const { history, should_reset } = this.getHistory();
+    this.messageHistory = history;
+    this.should_reset = should_reset;
   }
 
-  async getResponse() {
-    const messageHistory = await Promise.all(
-      this.messageHistory.map(async (message) => {
-        if ((message.content as string).includes('Transação registrada! Confira os detalhes:')) {
-          const transactionId = (message.content as string).match(/ID: ([A-Z0-9]+)/)?.[1];
-          message.content = `Despesa de ID ${transactionId} registrada!`;
-        }
-        return message;
-      }),
-    );
-    const messages = [{ role: 'system', content: SYSTEM_PROMPT }, ...messageHistory];
+  async getResponse(serverHandler: FunctionHandler) {
+    // Antes da chamada, vamos já jogar no prompt as informações de como estão as metas atualmente
+    const goalsHandler = new GoalsHandler(serverHandler);
+    const userGoals = await goalsHandler.getAllGoals();
 
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gemini-2.0-flash',
-        messages,
-        tools: TOOLS,
-        tool_choice: 'auto',
-      }),
+    // Garante que não tenha 2 mensagens mostrando as metas atuais
+    this.messageHistory = this.messageHistory.filter((message) => {
+      if (!('role' in message)) return true;
+      if (!('content' in message)) return true;
+      if (message.role !== 'developer') return true;
+      if (typeof message.content === 'string' && message.content.includes('Andamento atual das metas')) return false;
+      return true;
     });
-    const data: OpenAI.Chat.ChatCompletion = await response.json();
-    const functionCalled = data.choices[0].message.tool_calls?.[0]?.function;
-    const outputMessage = data.choices[0].message.content;
 
-    if (functionCalled) {
-      return { functionCalled: { ...functionCalled, handler: 'transactions' } };
+    this.messageHistory.push({
+      role: 'developer',
+      content: `Andamento atual das metas: ${userGoals}`,
+    });
+
+    const body: OpenAI.Responses.ResponseCreateParams = {
+      model: 'gpt-4.1-nano',
+      instructions: SYSTEM_PROMPT,
+      input: this.messageHistory,
+      tools: TOOLS,
+      tool_choice: 'auto',
+      previous_response_id: this.should_reset ? undefined : serverHandler.user!.previous_response_id,
+    };
+
+    const response = await client.responses.create(body);
+    const user = await serverHandler.supabase
+      .from('users')
+      .update({ previous_response_id: response.id })
+      .eq('id', serverHandler.user!.id)
+      .select()
+      .single()
+      .then((res) => res.data);
+    if (user) {
+      serverHandler.user = user;
+    }
+    this.should_reset = false;
+
+    let tokens = response.usage?.total_tokens ?? 0;
+    this.logger(`Spent ${tokens} tokens`);
+
+    // We should make sure chatgpt is not calling any function twice
+    const uniqueOutputs = [...new Set(response.output.map((output) => JSON.stringify(output)))];
+    const uniqueOutputsObject: typeof response.output = uniqueOutputs.map((output) => JSON.parse(output));
+
+    const functionOutputs: OpenAI.Responses.ResponseInput = [];
+
+    for (const output of uniqueOutputsObject) {
+      if (output.type === 'function_call') {
+        const functionOutput = await goalsHandler.handleFunctionCall(output);
+        functionOutputs.push({
+          type: 'function_call_output',
+          call_id: output.call_id,
+          output: functionOutput ?? 'Erro ao executar função',
+        });
+      }
+      if (output.type === 'message' && output.content[0].type === 'output_text') {
+        await serverHandler.sendMessage(output.content[0].text);
+        await new Promise((resolve) => setTimeout(resolve, 5000)); // Se as chamadas forem pre fixadas de mensagem, espera 5 segundos pra fingir que está processando.
+      }
     }
 
-    return { functionCalled, outputMessage };
+    this.messageHistory = functionOutputs;
+    if (functionOutputs.length > 0) {
+      tokens += await this.getResponse(serverHandler);
+    }
+
+    return tokens;
+  }
+
+  getHistory() {
+    if (
+      !this.messageHistory.some((message) => (message as OpenAI.Responses.ResponseOutputMessage).role === 'assistant')
+    )
+      return { history: this.messageHistory, should_reset: true };
+
+    let history = cloneDeep(this.messageHistory);
+    history.reverse();
+    const assistantMessage = history.find(
+      (message) => (message as OpenAI.Responses.ResponseOutputMessage).role === 'assistant',
+    );
+
+    // @ts-expect-error Já foi verificado que existe uma mensagem de assistente
+    const assistantMessageIndex = history.indexOf(assistantMessage);
+    history = history.slice(1, assistantMessageIndex);
+    history.reverse();
+    return { history, should_reset: false };
+  }
+
+  logger(message: string, level: 'log' | 'info' | 'error' = 'log') {
+    console[level]('\x1b[31m GOALS AGENT: \x1b[0m ', message);
   }
 }
 
-type Transaction = {
-  id?: string;
-  tipo: string;
-  valor: number;
-  categoria: string;
-  data: string;
-  descricao: string;
-  recorrente: boolean;
-};
+export class GoalsHandler {
+  constructor(private serverHandler: FunctionHandler) {}
 
-export class GoalsHandler extends FunctionHandler {
-  handleFunctionCall(functionCalled: { name: string; arguments: string }) {
+  async handleFunctionCall(functionCalled: { name: string; arguments: string }) {
+    const parsedArguments = JSON.parse(functionCalled.arguments);
+
+    this.logger(`Handling function ${functionCalled.name}`);
+    this.logger(`Arguments: ${JSON.stringify(parsedArguments)}`);
+
     switch (functionCalled.name) {
-      case 'register_transaction':
-        return this.registerTransaction(JSON.parse(functionCalled.arguments));
-      case 'update_transaction':
-        return this.updateTransaction(JSON.parse(functionCalled.arguments));
-      case 'cancel_transaction':
-        return this.cancelTransaction(JSON.parse(functionCalled.arguments).id);
+      case 'get_all_goals':
+        return this.getAllGoals();
+      case 'upsert_goal':
+        return this.upsertGoal(parsedArguments);
+      case 'delete_goal':
+        return this.deleteGoal(parsedArguments);
       default:
         throw new Error('Invalid function name');
     }
   }
-  // HANDLERS
-  async registerTransaction(transaction: Transaction) {
-    const { data: registeredTransaction } = await this.supabase
-      .from('transactions')
+
+  async getAllGoals() {
+    this.logger(`Getting all goals`);
+
+    const currentMonth = new Date().toISOString().split('-').slice(0, 2).join('-') + '-01';
+    const { data: userGoals } = await this.serverHandler.supabase
+      .from('user_goals_progress')
+      .select('categoria, meta, total_gasto')
+      .eq('user_id', this.serverHandler.user!.id)
+      .or(`mes_referencia.is.null, mes_referencia.eq.${currentMonth}`);
+
+    // Se existir limite da categoria 'global', devemos adicionar o total gasto
+    const globalGoal = userGoals?.find((goal) => goal.categoria === 'global');
+    if (globalGoal) {
+      const { data: totalGasto } = await this.serverHandler.supabase
+        .from('transactions')
+        .select('valor.sum()')
+        .eq('user_id', this.serverHandler.user!.id)
+        .gte('data', currentMonth)
+        .single();
+
+      globalGoal.total_gasto = totalGasto?.sum ?? 0;
+    }
+
+    return JSON.stringify(
+      userGoals?.map((goal) => ({
+        ...goal,
+        total_gasto: goal.total_gasto ?? 0,
+        percentual_gasto: (100 * ((goal.total_gasto ?? 0) / (goal.meta ?? 1))).toFixed(0),
+      })),
+    );
+  }
+
+  async upsertGoal(parsedArguments: { categoria: string; meta: number }) {
+    this.logger(`Upserting goal`);
+
+    // Checa se o usuário já tem uma meta para essa categoria
+    const { data: userGoal } = await this.serverHandler.supabase
+      .from('goals')
+      .select('id, valor')
+      .eq('user_id', this.serverHandler.user!.id)
+      .eq('categoria', parsedArguments.categoria)
+      .single();
+
+    if (userGoal) {
+      this.logger(`User already has a goal for this category`);
+      const { error } = await this.serverHandler.supabase
+        .from('goals')
+        .update({ valor: parsedArguments.meta })
+        .eq('id', userGoal.id)
+        .select()
+        .single();
+
+      if (error) {
+        this.logger(`Error updating goal: ${error.message}`);
+        return 'Erro ao atualizar meta';
+      }
+
+      return `A meta que antes era de ${userGoal.valor} reais foi alterada para ${parsedArguments.meta} reais`;
+    }
+
+    const { data: goal } = await this.serverHandler.supabase
+      .from('goals')
       .insert({
-        user_id: this.user!.id,
-        categoria: transaction.categoria,
-        valor: transaction.valor,
-        data: transaction.data,
-        descricao: transaction.descricao,
+        categoria: parsedArguments.categoria,
+        valor: parsedArguments.meta,
+        user_id: this.serverHandler.user!.id,
       })
       .select()
       .single();
 
-    if (!registeredTransaction) {
-      await this.sendMessage(
-        'Não foi possível registrar a transação. Tente novamente mais tarde ou entre em contato com o suporte.',
-      );
-      throw new Error('Failed to register transaction');
+    if (goal) {
+      return 'Meta inserida com sucesso';
     }
 
-    const beautifiedTransaction = this.beautifyTransaction(registeredTransaction);
-    await this.sendMessage(beautifiedTransaction);
-    // await this.waha.sendMessageWithButtons(
-    //   beautifiedTransaction,
-    //   this.payload.from,
-    //   [
-    //     { type: 'copy', text: 'Copiar ID', copyCode: registeredTransaction.id },
-    //   ]
-    // );
+    return 'Erro ao inserir meta';
   }
 
-  async updateTransaction(transaction: Partial<Transaction>) {
-    if (!transaction.id) {
-      throw new Error('Transaction ID is required');
-    }
+  async deleteGoal(parsedArguments: { categoria: string }) {
+    this.logger(`Deleting goal`);
+    this.logger(`Arguments: ${JSON.stringify(parsedArguments)}`);
 
-    const { data: updatedTransaction } = await this.supabase
-      .from('transactions')
-      .update(transaction)
-      .eq('id', transaction.id)
+    const { error } = await this.serverHandler.supabase
+      .from('goals')
+      .delete()
+      .eq('user_id', this.serverHandler.user!.id)
+      .eq('categoria', parsedArguments.categoria)
       .select()
       .single();
 
-    if (!updatedTransaction) {
-      await this.sendMessage(
-        'Não foi possível atualizar a transação. Tente novamente mais tarde ou entre em contato com o suporte.',
-      );
-      throw new Error('Failed to update transaction');
-    }
-
-    const beautifiedTransaction = this.beautifyTransaction(updatedTransaction, true);
-    await this.sendMessage(beautifiedTransaction);
-  }
-
-  async cancelTransaction(id: string) {
-    const { error } = await this.supabase.from('transactions').delete().eq('id', id);
-
     if (error) {
-      await this.sendMessage(
-        'Não foi possível cancelar a transação. Tente novamente mais tarde ou entre em contato com o suporte.',
-      );
-      console.error(error);
-      throw new Error('Failed to cancel transaction');
+      this.logger(`Error deleting goal: ${error.message}`);
+      return 'Erro ao deletar meta';
     }
 
-    await this.sendMessage('Transação cancelada com sucesso!');
+    return 'Meta deletada com sucesso';
   }
 
-  beautifyTransaction(transaction: Partial<Transaction>, update = false) {
-    return `
-Transação ${update ? 'atualizada' : 'registrada'}! Confira os detalhes:
-
-ID: ${transaction.id}
-Valor: *R$ ${transaction.valor?.toFixed(2)}*
-Categoria: *${capitalize(transaction.categoria)}*
-Data: ${new Date(transaction?.data || new Date()).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })}
-Descrição: ${capitalize(transaction.descricao)}
-    `.trim();
+  logger(message: string, level: 'log' | 'info' | 'error' = 'log') {
+    console[level]('\x1b[34m GOALS AGENT HANDLER: \x1b[0m ', message);
   }
 }
