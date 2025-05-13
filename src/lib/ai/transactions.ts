@@ -3,8 +3,6 @@ import OpenAI from 'openai';
 import FunctionHandler from './base-handler';
 import { recurringTransactionQueue } from '@/app/api/queues/recurring-transaction/route';
 
-const GEMINI_API_KEY = 'AIzaSyDYapw143aCD_Lq8a0FWwjlJS7f_nArEYQ';
-
 // 🧠 Prompt do agente para usuário não registrado:
 const SYSTEM_PROMPT = `
 Você é um assistente financeiro que interpreta mensagens informais (geralmente enviadas por WhatsApp) com o objetivo de registrar, atualizar ou cancelar transações financeiras do usuário.
@@ -16,281 +14,379 @@ Seu papel é identificar com clareza as intenções do usuário e chamar **uma d
 - cancel_transaction
 - update_recurring_transaction
 
+As categorias disponíveis são: "alimentação", "transporte", "moradia", "saúde", "lazer", "outros".
+
 Regras de comportamento:
 
-0. **Nunca mande mensagens que confirmam ações**. Essas mensagens são SEMPRE enviadas pelas próprias funções. Chame a função quando uma ação deve ser realizada.
-1. **Nunca pergunte o ID de uma transação**. Sempre recupere o ID do histórico de mensagens (por exemplo, da resposta da função register_transaction).
-2. Antes de realizar qualquer **update**, envie uma **mensagem de confirmação amigável e clara**, dizendo ao usuário exatamente o que será alterado (ex: "Vou atualizar o valor da transação 5O18S19U para R$ 200,00. Confirma?").
-3. Sempre assuma alguma categoria e data para a transação, mesmo que o usuário não tenha fornecido. Faça seu melhor chute.
-4. Se o usuário disser algo como “cancela isso”, assuma que ele se refere à **última transação registrada**, e chame "cancel_transaction" com o ID correspondente.
-5. Sempre que o usuário não informar a data da transação, use a data e hora atual: *${new Date().toISOString()}* e hoje é um dia de **${new Date().toLocaleDateString('pt-BR', { weekday: 'long' })}**.
-6. Adapte a **descrição da transação** para torná-la mais legível, mesmo que o usuário tenha enviado algo abreviado, informal ou confuso.
-7. Seja flexível: o usuário pode usar emojis, gírias ou linguagem cotidiana. Seu papel é interpretar corretamente.
-8. Você pode separar o texto em várias mensagens para ficar mais natural e humano. Separe usando "•"
+1. **Nunca pergunte o ID de uma transação**. Sempre recupere o ID do histórico de mensagens.
+2. Se o usuário não informar sobre qual transação se trata, pegue a última transação que vocês conversaram sobre na conversa.
+2. Sempre assuma alguma categoria e data para o registro de uma tracanansação, mesmo que o usuário não tenha fornecido. *Faça seu melhor chute*. Não fique perguntando por confirmação.
+3. Se o usuário disser algo como “cancela isso”, assuma que ele se refere à **última transação registrada**, e chame "cancel_transaction" com o ID correspondente.
+4. Sempre que o usuário não informar a data da transação, use a data e hora atual.
+5. Adapte a **descrição da transação** para torná-la mais legível, mesmo que o usuário tenha enviado algo abreviado, informal ou confuso.
+6. Seja flexível: o usuário pode usar emojis, gírias ou linguagem cotidiana. Seu papel é interpretar corretamente.
 
 Seja objetivo, útil e mantenha sempre o foco em finanças pessoais.
-
----
-
-### Exemplos de conversas
-
-#### ✅ Exemplo 1 — Registro de despesa
-
-**Usuário:** Almocei hoje, deu 42 reais  
-→ Chamar "register_transaction"
-
----
-
-#### ✅ Exemplo 2 — Registro de receita
-
-**Usuário:** Recebi 500 de freelance  
-→ Chamar "register_transaction"
-
----
-
-#### ✅ Exemplo 3 — Atualização de valor
-
-**Usuário:** aluguel de 500
-**IA:** Transação de ID PJ0TTN4W registrada!
-
-**Usuário:** Na verdade foram 550  
-**IA:** Você quer atualizar o valor da transação PJ0TTN4W para R$ 550,00?•Mande "confirmar" para confirmar a atualização ou "cancelar" para cancelar.
-**Usuário:** confirmar
-→ Chamar "update_transaction" com ID da transação PJ0TTN4W
-
----
-
-#### 
-✅ Exemplo 4.1 — Cancelamento
-
-**Usuário:** almoçei no mequi 37
-**IA:** Transação de ID 5O18S19U registrada!
-**Usuário:** cancela isso aí  
-→ Chamar "cancel_transaction" com ID da transação 5O18S19U
-
-✅ Exemplo 4.2 — Cancelamento
-
-**Usuário:** jantei na nossa casa, 56
-**IA:** Transação de ID NK2J3XKQ registrada!
-**Usuário:** cancela
-→ Chamar "cancel_transaction" com ID da transação NK2J3XKQ
-
-✅ Exemplo 4.3 — Cancelamento
-
-**Usuário:** cafe da manha na tia foi 22
-**IA:** Transação de ID PJ0TTN4W registrada!
-**Usuário:** cancela
-→ Chamar "cancel_transaction" com ID da transação PJ0TTN4W
-
----
-
-#### ✅ Exemplo 5 — Faltando dados
-
-**Usuário:** Gastei 30 ontem  
-**IA:** Pode me dizer o que foi esse gasto? Assim consigo classificar direitinho 😉  
-**Usuário:** Almoço no mequi  
-→ Chamar "register_transaction"
-
----
 `;
 
-const TOOLS: OpenAI.Chat.ChatCompletionCreateParams['tools'] = [
+// const GPT_PROMPT = `
+// Você é um assistente financeiro especializado em interpretar mensagens informais (principalmente via WhatsApp) para registrar, atualizar ou cancelar transações financeiras do usuário. Seu objetivo é identificar com clareza a intenção do usuário e chamar **uma das funções abaixo**, preenchendo todos os campos obrigatórios utilizando informações da mensagem ou, quando necessário, do histórico recente da conversa.
+
+// Antes de escolher a função e preencher seus argumentos, **reflita sempre explicitamente sobre:**
+// - Quais pistas ou dados relevantes existem na mensagem enviada pelo usuário.
+// - Como você interpreta emojis, abreviações, gírias ou instruções ambíguas.
+// - Como você deduz categoria, data, descrição e demais campos obrigatórios, mesmo quando não estão explícitos.
+// - O racional por trás de qualquer suposição feita (por exemplo: “assumi categoria ‘alimentação’ porque o usuário mencionou pizza”).
+
+// **Nunca antecipe a conclusão (função escolhida e campos preenchidos) antes do seu raciocínio detalhado. O raciocínio deve sempre preceder a resposta final.**
+
+// As funções disponíveis são:
+// - register_transaction
+// - update_transaction
+// - cancel_transaction
+// - update_recurring_transaction
+
+// As categorias disponíveis são: "alimentação", "transporte", "moradia", "saúde", "lazer", "outros".
+
+// # Regras de comportamento
+
+// 1. **Nunca pergunte o ID de uma transação**. Sempre recupere o ID do histórico de mensagens.
+// 2. Se o usuário não informar sobre qual transação se trata, pegue a última transação que conversaram na conversa.
+// 3. Sempre assuma alguma categoria e data ao registrar transações, mesmo que o usuário não forneça. Faça seu melhor chute, sem solicitar confirmação.
+// 4. Se o usuário disser algo como “cancela isso”, assuma que é a **última transação registrada** e chame "cancel_transaction" com o ID correspondente.
+// 5. Sempre que o usuário não informar a data da transação, use a data e hora atual.
+// 6. Adapte a **descrição da transação** para torná-la mais legível, interpretando abreviações ou informalidades.
+// 7. Seja flexível: interprete corretamente emojis, gírias ou linguagem informal.
+// 8. Seja objetivo, útil e foque sempre em finanças pessoais.
+
+// # Steps
+
+// 1. Leia e interprete a mensagem.
+// 2. Liste explicitamente as informações detectadas, inferências, eventuais ambiguidades e suposições feitas.
+// 3. Somente depois, aponte:
+//    - A função escolhida.
+//    - Os campos e valores preenchidos, incluindo o racional para cada decisão.
+
+// # Output Format
+
+// Retorne um objeto JSON com dois campos:
+// - "raciocinio": (string, em português) Sua explicação detalhada do processo de interpretação, extração de informações, suposições e justificativas.
+// - "acao": outro objeto, contendo:
+// - "funcao": (string) Nome da função escolhida.
+// - "campos": (objeto JSON) Campos obrigatórios da função e seus valores preenchidos.
+
+// Jamais utilize blocos de código.
+
+// # Examples
+
+// Exemplo 1:
+
+// Mensagem do usuário: "anota aí, gastei 30 no burger 🍔"
+
+// Resposta:
+// {
+//   "raciocinio": "O usuário usou linguagem informal e emoji de hambúrguer para indicar uma despesa em alimentação. Não mencionou data, então utilizo a data e hora atual. Valor é 30. Descrição adaptada para 'Compra de hambúrguer'. Categoria definida como 'alimentação'.",
+//   "acao": {
+//     "funcao": "register_transaction",
+//     "campos": {
+//       "descricao": "Compra de hambúrguer",
+//       "valor": 30,
+//       "data": "[DATA_ATUAL]",
+//       "categoria": "alimentação"
+//     }
+//   }
+// }
+
+// Exemplo 2:
+
+// Mensagem do usuário: "cancela isso"
+
+// (Supondo que a última transação discutida tem ID "TDSYD")
+
+// Resposta:
+// {
+//   "raciocinio": "O usuário pediu para cancelar algo sem especificar, usando linguagem vaga. Pela regra 4, assumo que se refere à última transação registrada, e recupero o ID do histórico.",
+//   "acao": {
+//     "funcao": "cancel_transaction",
+//     "campos": {
+//       "id": "TDSYD"
+//     }
+//   }
+// }
+
+// # Notes
+
+// - Se o contexto não permitir inferir claramente algum campo, adote a alternativa mais plausível com base nas mensagens recentes, nunca deixando campos em branco.
+// - Garanta que todo raciocínio venha sempre antes da proposta de ação conclusiva.
+// `
+// ---
+
+// ### Exemplos de conversas
+
+// #### ✅ Exemplo 1 — Registro de despesa
+
+// - Usuário: Almocei hoje, deu 42 reais
+// - IA: → Chamar "register_transaction"
+// - IA:
+// Transação registrada! Confira os detalhes:
+
+// *#5O18S19U*
+// Valor: *R$ 42.00*
+// Categoria: *Alimentação*
+// Data: 08/05/2025, 13:38
+// Descrição: Almoço
+
+// ---
+
+// #### ✅ Exemplo 3 — Atualização de valor
+
+// - Usuário: fatura da internet de 99
+// - IA: → Chamar "register_transaction"
+// - IA:
+// Transação registrada! Confira os detalhes:
+
+// *#A2PJU*
+// Valor: *R$ 99.00*
+// Categoria: *Moradia*
+// Data: 08/05/2025, 13:38
+// Descrição: Pagamento da fatura de internet
+
+// - Usuário: Na verdade foi 115
+// - IA: → Chamar "update_transaction" com ID da transação #A2PJU
+// - IA:
+// Transação atualizada! Confira os detalhes:
+
+// *#A2PJU*
+// Valor: *R$ 115.00*
+// Categoria: *Moradia*
+// Data: 08/05/2025, 13:38
+// Descrição: Pagamento da fatura de internet
+
+// ---
+
+// ####
+// ✅ Exemplo 4.1 — Cancelamento
+
+// - Usuário: almoçei no mequi 37
+// - IA: → Chamar "register_transaction"
+// - IA:
+// Transação registrada! Confira os detalhes:
+
+// *#5O18S19U*
+// Valor: *R$ 37.00*
+// Categoria: *Alimentação*
+// Data: 08/05/2025, 13:38
+// Descrição: Almoço no mequi
+
+// - Usuário: cancela isso aí
+// - IA: → Chamar "cancel_transaction" com ID da transação #5O18S19U
+// - IA: Prontinho! Cancelei a transação *#5O18S19U* pra você.
+
+// ---
+
+// #### ✅ Exemplo 5 — Faltando dados
+
+// Usuário: Gastei 30 ontem
+// IA: Pode me dizer o que foi esse gasto? Assim consigo classificar direitinho 😉
+// Usuário: Almoço no mequi
+// → Chamar "register_transaction"
+
+// ---
+// A data atual é *${new Date().toISOString()}* e hoje é um dia de **${new Date().toLocaleDateString('pt-BR', { weekday: 'long' })}**.
+
+const TOOLS: OpenAI.Responses.ResponseCreateParams['tools'] = [
   {
     type: 'function',
-    function: {
-      name: 'register_transaction',
-      description: 'Registra uma nova transação financeira do usuário, como uma despesa ou receita',
-      parameters: {
-        type: 'object',
-        properties: {
-          tipo: {
-            type: 'string',
-            description: 'Tipo da transação. Pode ser "despesa" (saída de dinheiro) ou "receita" (entrada de dinheiro)',
-            enum: ['despesa', 'receita'],
-          },
-          valor: {
-            type: 'number',
-            description: 'Valor numérico da transação. Não use símbolos como R$ ou vírgulas.',
-          },
-          categoria: {
-            type: 'string',
-            description:
-              'Categoria da transação. Deve ser uma entre: "alimentação", "transporte", "moradia", "saúde", "lazer", "outros".',
-            enum: ['alimentação', 'transporte', 'moradia', 'saúde', 'lazer', 'outros'],
-          },
-          data: {
-            type: 'string',
-            description:
-              'Data da transação no formato ISO 8601 (ex: 2025-05-07T14:30:00Z). Use a data atual se nenhuma data for fornecida.',
-          },
-          descricao: {
-            type: 'string',
-            description: 'Descrição curta e clara da transação. Pode ser reescrita a partir da mensagem do usuário.',
-          },
-          recorrente: {
-            type: 'boolean',
-            description:
-              'Indica se a transação se repete regularmente (ex: mensalmente). Se true, DEVE ser informado o campo "frequencia" e "primeira_cobranca".',
-          },
-          frequencia: {
-            type: 'string',
-            description: 'Frequência de recorrência da transação. Pode ser "diária", "semanal", "mensal" ou "anual".',
-            enum: ['diária', 'semanal', 'mensal', 'anual'],
-          },
-          primeira_cobranca: {
-            type: 'string',
-            description:
-              'Data da primeira cobrança da transação recorrente. Deve ser no formato ISOString. Se o usuário não informar, use a hora atual. Se a data for no passado, coloque a data da próxima cobrança.',
-          },
+    name: 'register_transaction',
+    description: 'Registra uma nova transação financeira do usuário, como uma despesa ou receita',
+    strict: false,
+    parameters: {
+      type: 'object',
+      properties: {
+        tipo: {
+          type: 'string',
+          description: 'Tipo da transação. Pode ser "despesa" (saída de dinheiro) ou "receita" (entrada de dinheiro)',
+          enum: ['despesa', 'receita'],
         },
-        required: ['tipo', 'valor', 'categoria', 'data', 'descricao', 'recorrente'],
+        valor: {
+          type: 'number',
+          description: 'Valor numérico da transação. Não use símbolos como R$ ou vírgulas.',
+        },
+        categoria: {
+          type: 'string',
+          description:
+            'Categoria da transação. Deve ser uma entre: "alimentação", "transporte", "moradia", "saúde", "lazer", "outros".',
+          enum: ['alimentação', 'transporte', 'moradia', 'saúde', 'lazer', 'outros'],
+        },
+        data: {
+          type: 'string',
+          description:
+            'Data da transação no formato ISO 8601 (ex: 2025-05-07T14:30:00Z). Use a data atual se nenhuma data for fornecida.',
+        },
+        descricao: {
+          type: 'string',
+          description: 'Descrição curta e clara da transação. Pode ser reescrita a partir da mensagem do usuário.',
+        },
+        recorrente: {
+          type: 'boolean',
+          description:
+            'Indica se a transação se repete regularmente (ex: mensalmente). Se true, DEVE ser informado o campo "frequencia" e "primeira_cobranca".',
+        },
+        frequencia: {
+          type: 'string',
+          description: 'Frequência de recorrência da transação. Pode ser "diária", "semanal", "mensal" ou "anual".',
+          enum: ['diária', 'semanal', 'mensal', 'anual'],
+        },
+        primeira_cobranca: {
+          type: 'string',
+          description:
+            'Data da primeira cobrança da transação recorrente. Deve ser no formato ISOString. Se o usuário não informar, use a hora atual. Se a data for no passado, coloque a data da próxima cobrança.',
+        },
       },
+      required: ['tipo', 'valor', 'categoria', 'data', 'descricao', 'recorrente'],
+      additionalProperties: false,
     },
   },
   {
     type: 'function',
-    function: {
-      name: 'update_transaction',
-      description: 'Atualiza uma transação existente do usuário. O ID deve estar disponível no histórico da conversa.',
-      parameters: {
-        type: 'object',
-        properties: {
-          id: {
-            type: 'string',
-            description: 'ID da transação a ser atualizada. Deve ser obtido a partir do histórico.',
-          },
-          tipo: {
-            type: 'string',
-            description: 'Tipo atualizado da transação, se for o caso. Pode ser "despesa" ou "receita".',
-            enum: ['despesa', 'receita'],
-          },
-          valor: {
-            type: 'number',
-            description: 'Valor atualizado da transação.',
-          },
-          categoria: {
-            type: 'string',
-            description:
-              'Categoria atualizada. Deve ser uma entre: "alimentação", "transporte", "moradia", "saúde", "lazer", "outros".',
-            enum: ['alimentação', 'transporte', 'moradia', 'saúde', 'lazer', 'outros'],
-          },
-          data: {
-            type: 'string',
-            description: 'Nova data da transação no formato ISO 8601, se for atualizada.',
-          },
-          descricao: {
-            type: 'string',
-            description: 'Nova descrição da transação.',
-          },
+    name: 'update_transaction',
+    description: 'Atualiza uma transação existente do usuário. O ID deve estar disponível no histórico da conversa.',
+    strict: false,
+    parameters: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'string',
+          description: 'ID da transação a ser atualizada. Deve ser obtido a partir do histórico.',
         },
-        required: ['id'],
+        tipo: {
+          type: 'string',
+          description: 'Tipo atualizado da transação, se for o caso. Pode ser "despesa" ou "receita".',
+          enum: ['despesa', 'receita'],
+        },
+        valor: {
+          type: 'number',
+          description: 'Valor atualizado da transação.',
+        },
+        categoria: {
+          type: 'string',
+          description:
+            'Categoria atualizada. Deve ser uma entre: "alimentação", "transporte", "moradia", "saúde", "lazer", "outros".',
+          enum: ['alimentação', 'transporte', 'moradia', 'saúde', 'lazer', 'outros'],
+        },
+        data: {
+          type: 'string',
+          description: 'Nova data da transação no formato ISO 8601, se for atualizada.',
+        },
+        descricao: {
+          type: 'string',
+          description: 'Nova descrição da transação.',
+        },
       },
+      required: ['id'],
+      additionalProperties: false,
     },
   },
   {
     type: 'function',
-    function: {
-      name: 'cancel_transaction',
-      description: 'Cancela uma transação existente do usuário com base no ID registrado no histórico.',
-      parameters: {
-        type: 'object',
-        properties: {
-          id: {
-            type: 'string',
-            description: 'ID da transação a ser cancelada. Deve estar disponível no histórico da conversa.',
-          },
+    name: 'cancel_transaction',
+    description: 'Cancela uma transação existente do usuário com base no ID registrado no histórico.',
+    strict: true,
+    parameters: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'string',
+          description: 'ID da transação a ser cancelada. Deve estar disponível no histórico da conversa.',
         },
-        required: ['id'],
       },
+      required: ['id'],
+      additionalProperties: false,
     },
   },
   {
     type: 'function',
-    function: {
-      name: 'update_recurring_transaction',
-      description:
-        'Atualiza uma transação recorrente existente do usuário. O ID deve estar disponível no histórico da conversa.',
-      parameters: {
-        type: 'object',
-        properties: {
-          id: {
-            type: 'string',
-            description: 'ID da transação recorrente a ser atualizada. Deve estar disponível no histórico da conversa.',
-          },
-          valor: {
-            type: 'number',
-            description: 'Valor atualizado da transação.',
-          },
-          categoria: {
-            type: 'string',
-            description: 'Categoria atualizada.',
-            enum: ['alimentação', 'transporte', 'moradia', 'saúde', 'lazer', 'outros'],
-          },
-          data: {
-            type: 'string',
-            description: 'Nova data da transação no formato ISO 8601, se for atualizada.',
-          },
-          descricao: {
-            type: 'string',
-            description: 'Nova descrição da transação.',
-          },
-          frequencia: {
-            type: 'string',
-            description: 'Frequência de recorrência da transação. Pode ser "diária", "semanal", "mensal" ou "anual".',
-            enum: ['diária', 'semanal', 'mensal', 'anual'],
-          },
+    name: 'update_recurring_transaction',
+    description:
+      'Atualiza uma transação recorrente existente do usuário. O ID deve estar disponível no histórico da conversa.',
+    strict: false,
+    parameters: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'string',
+          description: 'ID da transação recorrente a ser atualizada. Deve estar disponível no histórico da conversa.',
         },
-        required: ['id'],
+        valor: {
+          type: 'number',
+          description: 'Valor atualizado da transação.',
+        },
+        categoria: {
+          type: 'string',
+          description: 'Categoria atualizada.',
+          enum: ['alimentação', 'transporte', 'moradia', 'saúde', 'lazer', 'outros'],
+        },
+        data: {
+          type: 'string',
+          description: 'Nova data da transação no formato ISO 8601, se for atualizada.',
+        },
+        descricao: {
+          type: 'string',
+          description: 'Nova descrição da transação.',
+        },
+        frequencia: {
+          type: 'string',
+          description: 'Frequência de recorrência da transação. Pode ser "diária", "semanal", "mensal" ou "anual".',
+          enum: ['diária', 'semanal', 'mensal', 'anual'],
+        },
       },
+      required: ['id'],
+      additionalProperties: false,
     },
   },
 ];
 
-export default class TransactionsAgent {
-  private messageHistory: OpenAI.Chat.ChatCompletionMessageParam[];
+const client = new OpenAI({
+  apiKey: process.env.OPEN_AI_API_KEY,
+});
 
-  constructor(messageHistory: OpenAI.Chat.ChatCompletionMessageParam[]) {
+export default class TransactionsAgent {
+  private messageHistory: OpenAI.Responses.ResponseInputItem[];
+
+  constructor(messageHistory: OpenAI.Responses.ResponseInputItem[]) {
     this.messageHistory = messageHistory;
+
+    // Joga a informação de data atual na última mensagem pra não matar a função de caching do gpt
+    // @ts-expect-error A última sempre vai ser mensagem.
+    this.messageHistory[0].content += `\n A data atual é *${new Date().toISOString()}* e hoje é um dia de **${new Date().toLocaleDateString('pt-BR', { weekday: 'long' })}**.`;
   }
 
-  async getResponse() {
-    const messageHistory = await Promise.all(
-      this.messageHistory.map(async (message) => {
-        if ((message.content as string).includes('Transação registrada! Confira os detalhes:')) {
-          const transactionId = (message.content as string).match(/#([A-Z0-9]+)/)?.[1];
-          message.content = `Transação de ID ${transactionId} registrada!`;
-        }
-        if ((message.content as string).includes('Transação atualizada! Confira os detalhes:')) {
-          const transactionId = (message.content as string).match(/#([A-Z0-9]+)/)?.[1];
-          message.content = `Transação de ID ${transactionId} atualizada!`;
-        }
-        return message;
-      }),
-    );
-    const messages = [{ role: 'system', content: SYSTEM_PROMPT }, ...messageHistory];
+  async getResponse(serverHandler: FunctionHandler) {
+    const body: OpenAI.Responses.ResponseCreateParams = {
+      model: 'gpt-4.1-nano',
+      instructions: SYSTEM_PROMPT,
+      input: this.messageHistory,
+      tools: TOOLS,
+      tool_choice: 'auto',
+    };
 
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gemini-2.0-flash',
-        messages,
-        tools: TOOLS,
-        tool_choice: 'auto',
-      }),
-    });
-    const data: OpenAI.Chat.ChatCompletion = await response.json();
-    const functionCalled = data.choices[0].message.tool_calls?.[0]?.function;
-    const outputMessage = data.choices[0].message.content;
+    const response = await client.responses.create(body);
+    const tokens = response.usage?.total_tokens ?? 0;
 
-    if (functionCalled) {
-      return { functionCalled: { ...functionCalled, handler: 'transactions' } };
+    // We should make sure chatgpt is not calling any function twice
+    const uniqueOutputs = [...new Set(response.output.map((output) => JSON.stringify(output)))];
+    const uniqueOutputsObject: typeof response.output = uniqueOutputs.map((output) => JSON.parse(output));
+    for (const output of uniqueOutputsObject) {
+      if (output.type === 'function_call') {
+        const transactionsHandler = new TransactionsHandler(serverHandler);
+        await transactionsHandler.handleFunctionCall(output);
+      }
+      if (output.type === 'message' && output.content[0].type === 'output_text') {
+        await serverHandler.sendMessage(output.content[0].text);
+      }
     }
 
-    return { functionCalled, outputMessage };
+    return tokens;
   }
 }
 
@@ -314,30 +410,41 @@ const frequencias = {
   anual: DAY_IN_MS * 365,
 };
 
-export class TransactionsHandler extends FunctionHandler {
+export class TransactionsHandler {
+  constructor(private serverHandler: FunctionHandler) {}
+
   handleFunctionCall(functionCalled: { name: string; arguments: string }) {
+    const parsedArguments = JSON.parse(functionCalled.arguments);
+    // Tira o # da frente do ID, caso a IA tenha colocado
+    if (parsedArguments.id && parsedArguments.id.startsWith('#')) {
+      parsedArguments.id = parsedArguments.id.slice(1);
+    }
+
     switch (functionCalled.name) {
       case 'register_transaction':
-        if (JSON.parse(functionCalled.arguments).recorrente) {
-          return this.registerRecurringTransaction(JSON.parse(functionCalled.arguments));
+        if (parsedArguments.recorrente) {
+          return 'Transações recorrentes ainda não estão implementadas.';
+          // return this.registerRecurringTransaction(parsedArguments);
         }
-        return this.registerTransaction(JSON.parse(functionCalled.arguments));
+        return this.registerTransaction(parsedArguments);
       case 'update_transaction':
-        return this.updateTransaction(JSON.parse(functionCalled.arguments));
+        return this.updateTransaction(parsedArguments);
       case 'update_recurring_transaction':
-        return this.updateRecurringTransaction(JSON.parse(functionCalled.arguments));
+        return 'Transações recorrentes ainda não estão implementadas.';
+      // return this.updateRecurringTransaction(parsedArguments);
       case 'cancel_transaction':
-        return this.cancelTransaction(JSON.parse(functionCalled.arguments).id);
+        return this.cancelTransaction(parsedArguments.id);
       default:
         throw new Error('Invalid function name');
     }
   }
   // HANDLERS
   async registerTransaction(transaction: Transaction) {
-    const { data: registeredTransaction, error } = await this.supabase
+    this.logger('Registering transaction', 'info');
+    const { data: registeredTransaction, error } = await this.serverHandler.supabase
       .from('transactions')
       .insert({
-        user_id: this.user!.id,
+        user_id: this.serverHandler.user!.id,
         categoria: transaction.categoria,
         valor: transaction.valor,
         data: transaction.data,
@@ -347,32 +454,26 @@ export class TransactionsHandler extends FunctionHandler {
       .single();
 
     if (!registeredTransaction) {
-      await this.sendMessage(
+      await this.serverHandler.sendMessage(
         'Não foi possível registrar a transação. Tente novamente mais tarde ou entre em contato com o suporte.',
       );
-      return console.error(error);
+      return this.logger(error.message, 'error');
       // throw new Error('Failed to register transaction');
     }
 
     const beautifiedTransaction = TransactionsHandler.beautifyTransaction(registeredTransaction);
-    await this.sendMessage(beautifiedTransaction);
-    // await this.waha.sendMessageWithButtons(
-    //   beautifiedTransaction,
-    //   this.payload.from,
-    //   [
-    //     { type: 'copy', text: 'Copiar ID', copyCode: registeredTransaction.id },
-    //   ]
-    // );
+    await this.serverHandler.sendMessage(beautifiedTransaction);
   }
 
   async registerRecurringTransaction(transaction: Transaction) {
+    this.logger('Registering recurring transaction', 'info');
     if (!transaction.frequencia) {
       throw new Error('Frequência is required');
     }
-    const { data: recurringTransaction, error } = await this.supabase
+    const { data: recurringTransaction, error } = await this.serverHandler.supabase
       .from('recurring_transactions')
       .insert({
-        user_id: this.user!.id,
+        user_id: this.serverHandler.user!.id,
         categoria: transaction.categoria,
         valor: transaction.valor,
         descricao: transaction.descricao,
@@ -382,10 +483,10 @@ export class TransactionsHandler extends FunctionHandler {
       .single();
 
     if (!recurringTransaction) {
-      await this.sendMessage(
+      await this.serverHandler.sendMessage(
         'Não foi possível registrar a transação recorrente. Tente novamente mais tarde ou entre em contato com o suporte.',
       );
-      return console.error(error);
+      return this.logger(error.message, 'error');
     }
 
     const firstChargeDate = TransactionsHandler.dataPrimeiraCobranca(
@@ -401,18 +502,19 @@ export class TransactionsHandler extends FunctionHandler {
       },
     });
 
-    await this.sendMessage(TransactionsHandler.beautifyRecurringTransaction(recurringTransaction));
+    await this.serverHandler.sendMessage(TransactionsHandler.beautifyRecurringTransaction(recurringTransaction));
   }
 
   async updateRecurringTransaction(transaction: Partial<Transaction>) {
+    this.logger('Updating recurring transaction #' + transaction.id, 'info');
     if (!transaction.id) {
-      console.error('Transaction ID is required');
-      await this.sendMessage(
+      this.logger('Transaction ID is required', 'error');
+      await this.serverHandler.sendMessage(
         'Não foi possível atualizar a transação. Tente novamente mais tarde ou entre em contato com o suporte.',
       );
       return;
     }
-    const { data: updatedTransaction, error } = await this.supabase
+    const { data: updatedTransaction, error } = await this.serverHandler.supabase
       .from('recurring_transactions')
       .update(transaction)
       .eq('id', transaction.id)
@@ -420,21 +522,23 @@ export class TransactionsHandler extends FunctionHandler {
       .single();
 
     if (!updatedTransaction) {
-      await this.sendMessage(
+      await this.serverHandler.sendMessage(
         'Não foi possível atualizar a transação. Tente novamente mais tarde ou entre em contato com o suporte.',
       );
-      return console.error(error);
+      return this.logger(error.message, 'error');
     }
 
-    await this.sendMessage(TransactionsHandler.beautifyRecurringTransaction(updatedTransaction, true));
+    await this.serverHandler.sendMessage(TransactionsHandler.beautifyRecurringTransaction(updatedTransaction, true));
   }
 
   async updateTransaction(transaction: Partial<Transaction>) {
+    this.logger('Updating transaction #' + transaction.id, 'info');
     if (!transaction.id) {
+      this.logger('Transaction ID is required', 'error');
       throw new Error('Transaction ID is required');
     }
 
-    const { data: updatedTransaction, error } = await this.supabase
+    const { data: updatedTransaction, error } = await this.serverHandler.supabase
       .from('transactions')
       .update(transaction)
       .eq('id', transaction.id)
@@ -442,27 +546,29 @@ export class TransactionsHandler extends FunctionHandler {
       .single();
 
     if (!updatedTransaction) {
-      await this.sendMessage(
+      await this.serverHandler.sendMessage(
         'Não foi possível atualizar a transação. Tente novamente mais tarde ou entre em contato com o suporte.',
       );
-      return console.error(error);
+      console.log(transaction);
+      return this.logger(error.message, 'error');
     }
 
     const beautifiedTransaction = TransactionsHandler.beautifyTransaction(updatedTransaction, true);
-    await this.sendMessage(beautifiedTransaction);
+    await this.serverHandler.sendMessage(beautifiedTransaction);
   }
 
   async cancelTransaction(id: string) {
-    const { error } = await this.supabase.from('transactions').delete().eq('id', id);
+    this.logger('Cancelling transaction #' + id, 'info');
+    const { error } = await this.serverHandler.supabase.from('transactions').delete().eq('id', id);
 
     if (error) {
-      await this.sendMessage(
+      await this.serverHandler.sendMessage(
         'Não foi possível cancelar a transação. Tente novamente mais tarde ou entre em contato com o suporte.',
       );
-      return console.error(error);
+      return this.logger(error.message, 'error');
     }
 
-    await this.sendMessage(`Transação #${id} cancelada com sucesso!`);
+    await this.serverHandler.sendMessage(`Transação #${id} cancelada com sucesso!`);
   }
 
   static beautifyTransaction(transaction: Partial<Transaction>, update = false) {
@@ -540,5 +646,9 @@ Data da primeira cobrança: ${firstChargeDate}
     }
 
     return firstChargeDate;
+  }
+
+  logger(message: string, level: 'log' | 'info' | 'error' = 'log') {
+    console[level]('\x1b[34m TRANSACTIONS HANDLER: \x1b[0m ', message);
   }
 }

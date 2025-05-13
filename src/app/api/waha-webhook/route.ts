@@ -195,7 +195,7 @@ Espero poder te ajudar no futuro!
     const currentTimestamp = new Date().getTime();
     const contextWindow = [];
 
-    const maxMessageAge = 60; // 15 minutos
+    const maxMessageAge = 60 * 5; // 5 minutos
     let lastMessage = { timestamp: currentTimestamp / 1000 };
     for (const message of messageHistory) {
       if (Math.abs(message.timestamp - lastMessage.timestamp) > maxMessageAge) break;

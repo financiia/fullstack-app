@@ -9,21 +9,21 @@ export type Database = {
           created_at: string;
           id: number;
           user_id: string | null;
-          valor: string;
+          valor: number;
         };
         Insert: {
           categoria: string;
           created_at?: string;
           id?: number;
           user_id?: string | null;
-          valor: string;
+          valor: number;
         };
         Update: {
           categoria?: string;
           created_at?: string;
           id?: number;
           user_id?: string | null;
-          valor?: string;
+          valor?: number;
         };
         Relationships: [
           {
@@ -156,7 +156,24 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      user_goals_progress: {
+        Row: {
+          categoria: string | null;
+          mes_referencia: string | null;
+          meta: number | null;
+          total_gasto: number | null;
+          user_id: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'metas_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Functions: {
       gerar_id_unico_transactions: {
